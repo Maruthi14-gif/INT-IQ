@@ -1,6 +1,8 @@
 import "server-only"
 import { createHmac, timingSafeEqual } from "node:crypto"
 
+export { CLOSING_LINE } from "@/lib/voice-shared"
+
 /**
  * Vapi voice interviews.
  *
@@ -14,7 +16,6 @@ import { createHmac, timingSafeEqual } from "node:crypto"
 export const VAPI_API = "https://api.vapi.ai"
 
 /** Said at the end of the last answer; Vapi hangs up when the assistant says it. */
-export const CLOSING_LINE = "Thank you, that's all my questions. I'm preparing your report now."
 const END_CALL_PHRASE = "preparing your report now"
 
 /**
@@ -24,6 +25,10 @@ const END_CALL_PHRASE = "preparing your report now"
  */
 export function vapiPublicKey() {
   return process.env.VAPI_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? ""
+}
+
+export function vapiAssistantId() {
+  return process.env.VAPI_ASSISTANT_ID ?? ""
 }
 
 export function isVoiceConfigured() {
@@ -66,28 +71,70 @@ export function voiceAgentBaseUrl(requestUrl: string) {
   return (process.env.VAPI_LLM_BASE_URL ?? new URL(requestUrl).origin).replace(/\/+$/, "")
 }
 
-export function buildVoiceAssistant(input: { interviewId: string; firstMessage: string; baseUrl: string }) {
+/** Vapi's cloud cannot call loopback URLs. Those calls use the saved assistant model instead. */
+export function isLoopbackVoiceUrl(baseUrl: string) {
+  try {
+    const hostname = new URL(baseUrl).hostname
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
+  } catch {
+    return false
+  }
+}
+
+export function buildVoiceAssistant(input: {
+  interviewId: string
+  firstMessage: string
+  baseUrl: string
+  preserveSavedVoice?: boolean
+  localFallback?: {
+    type: "technical" | "behavioral" | "hr"
+    targetRole: string
+    totalQuestions: number
+    questionNumber: number
+  }
+}) {
+  const configuredVoiceId = process.env.VAPI_VOICE_ID
   const language = process.env.VAPI_TRANSCRIBER_LANGUAGE ?? "en"
   const exp = Math.floor(Date.now() / 1000) + MAX_CALL_SECONDS + 15 * 60
+  const localPrompt = input.localFallback
+    ? `You are conducting a realistic ${input.localFallback.type} mock interview for a ${input.localFallback.targetRole} role.
+The first message supplied to this call is interview question ${input.localFallback.questionNumber} of ${input.localFallback.totalQuestions}.
+Listen carefully to each answer. Respond briefly and naturally, then ask exactly one relevant follow-up or next question.
+Never repeat a question unless the candidate explicitly asks you to repeat it. Do not give the answer or evaluate the candidate during the call.
+Keep each response under 45 words. The application controls the question count and will end the call after the final answer.`
+    : null
   return {
     name: "INT-IQ Interviewer",
     firstMessage: input.firstMessage,
     firstMessageMode: "assistant-speaks-first",
-    model: {
-      provider: "custom-llm",
-      // Vapi appends /chat/completions.
-      url: `${input.baseUrl}/api/vapi/llm/${input.interviewId}`,
-      model: "int-iq-gemini-interviewer",
-      headers: { "x-intiq-voice-token": voiceAgentToken(input.interviewId, exp) },
-      timeoutSeconds: 25,
-      messages: [{ role: "system", content: "You are the INT-IQ mock interviewer." }],
-    },
-    voice: {
-      provider: process.env.VAPI_VOICE_PROVIDER ?? "vapi",
-      voiceId: process.env.VAPI_VOICE_ID ?? "Clara",
-      // Speak short chunks right away, so "Got it." plays while the question is still being written.
-      chunkPlan: { enabled: true, minCharacters: 4 },
-    },
+    model: localPrompt
+      ? {
+          // The saved assistant already has access to this provider in Vapi.
+          provider: "openai",
+          model: process.env.VAPI_LOCAL_MODEL_ID ?? "gpt-4.1",
+          messages: [{ role: "system", content: localPrompt }],
+          temperature: 0.6,
+          maxTokens: 120,
+        }
+      : {
+          provider: "custom-llm",
+          // Vapi appends /chat/completions.
+          url: `${input.baseUrl}/api/vapi/llm/${input.interviewId}`,
+          model: "int-iq-gemini-interviewer",
+          headers: { "x-intiq-voice-token": voiceAgentToken(input.interviewId, exp) },
+          timeoutSeconds: 25,
+          messages: [{ role: "system", content: "You are the INT-IQ mock interviewer." }],
+        },
+    ...(input.preserveSavedVoice && !configuredVoiceId
+      ? {}
+      : {
+          voice: {
+            provider: process.env.VAPI_VOICE_PROVIDER ?? "vapi",
+            voiceId: configuredVoiceId ?? "Clara",
+            // Speak short chunks right away while Gemini is still streaming the question.
+            chunkPlan: { enabled: true, minCharacters: 4 },
+          },
+        }),
     transcriber: { provider: "deepgram", model: "nova-3", language },
     startSpeakingPlan: {
       waitSeconds: 0.4,

@@ -65,6 +65,28 @@ export type AnswerReview = {
   betterAnswer: string
 }
 
+export type VisualCoachingIssue = {
+  code: string
+  label: string
+  seconds: number
+  reminders: number
+}
+
+export type InterviewCoaching = {
+  camera?: {
+    calibrated: boolean
+    analyzedSeconds: number
+    visiblePercent: number
+    issues: VisualCoachingIssue[]
+  }
+  delivery?: {
+    words: number
+    wordsPerMinute: number | null
+    fillerWords: number
+    longPauses: number
+  }
+}
+
 export type InterviewReport = {
   overallScore: number // 0-100
   verdict: string
@@ -74,6 +96,8 @@ export type InterviewReport = {
   improvements: string[]
   answers: AnswerReview[]
   nextSteps: string[]
+  /** Deterministic, on-device coaching metrics. They do not affect the AI score. */
+  coaching?: InterviewCoaching
 }
 
 export const interviews = pgTable(

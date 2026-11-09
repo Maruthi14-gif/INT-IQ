@@ -6,6 +6,7 @@ import type { InterviewTurn } from "@/lib/db/schema"
 import { getInterviewForVoiceAgent, saveTurns, saveTurnsIfUnchanged } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
 import { CLOSING_LINE, verifyVoiceAgentToken } from "@/lib/vapi"
+import { isVisualCoachingMessage } from "@/lib/visual-coaching"
 
 export const maxDuration = 60
 
@@ -143,7 +144,9 @@ function whatWasAnswered(turns: InterviewTurn[], messages: ChatMessage[]) {
     }
   }
   // Fallback: the newest question, with what was said since the interviewer last spoke.
-  const lastAssistant = messages.findLastIndex((m) => m.role === "assistant")
+  const lastAssistant = messages.findLastIndex(
+    (m) => m.role === "assistant" && !isVisualCoachingMessage(textOf(m)),
+  )
   return { index: turns.length - 1, answer: userSpeech(messages.slice(lastAssistant + 1)) }
 }
 

@@ -1,4 +1,12 @@
-import { ArrowRightIcon, CheckIcon, LightbulbIcon, MicIcon, TrendingUpIcon } from "lucide-react"
+import {
+  ArrowRightIcon,
+  CameraIcon,
+  CheckIcon,
+  GaugeIcon,
+  LightbulbIcon,
+  MicIcon,
+  TrendingUpIcon,
+} from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
@@ -113,6 +121,59 @@ async function Report({ params }: { params: Promise<{ id: string }> }) {
       {/* anti-cheat (interviews from before the camera checks have no data) */}
       {integrity && <IntegrityCard summary={integrity} mode={interview.mode} />}
 
+      {report.coaching && (
+        <section className="rounded-2xl border bg-card p-6" aria-labelledby="coaching-title">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 id="coaching-title" className="font-medium">Camera & delivery coaching</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Objective practice signals only. They do not change your interview score, and no video was uploaded.
+              </p>
+            </div>
+            {report.coaching.camera && (
+              <span className="text-xs text-muted-foreground">
+                {report.coaching.camera.analyzedSeconds}s analyzed · {report.coaching.camera.visiblePercent}% visible
+              </span>
+            )}
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {report.coaching.delivery && (
+              <div className="rounded-xl border p-4">
+                <h3 className="flex items-center gap-2 text-sm font-medium">
+                  <GaugeIcon className="size-4 text-brand-text" /> Delivery
+                </h3>
+                <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+                  <Metric value={report.coaching.delivery.wordsPerMinute ?? "—"} label="words/min" />
+                  <Metric value={report.coaching.delivery.fillerWords} label="possible fillers" />
+                  <Metric value={report.coaching.delivery.longPauses} label="long pauses" />
+                </div>
+              </div>
+            )}
+            {report.coaching.camera && (
+              <div className="rounded-xl border p-4">
+                <h3 className="flex items-center gap-2 text-sm font-medium">
+                  <CameraIcon className="size-4 text-brand-text" /> Visual presence
+                </h3>
+                {report.coaching.camera.issues.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">No sustained camera issues were detected.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2 text-sm">
+                    {report.coaching.camera.issues.slice(0, 5).map((issue) => (
+                      <li key={issue.code} className="flex items-center justify-between gap-3">
+                        <span>{issue.label}</span>
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                          {issue.seconds}s{issue.reminders > 0 ? ` · ${issue.reminders} cue${issue.reminders === 1 ? "" : "s"}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* strengths / improvements */}
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-2xl border bg-card p-6">
@@ -204,6 +265,15 @@ async function Report({ params }: { params: Promise<{ id: string }> }) {
           </Button>
         </div>
       </section>
+    </div>
+  )
+}
+
+function Metric({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div>
+      <p className="font-mono text-xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
     </div>
   )
 }

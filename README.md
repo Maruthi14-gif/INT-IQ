@@ -37,6 +37,7 @@ npm run dev              # http://localhost:3000
 | `NEON_AUTH_COOKIE_SECRET` | 32+ random characters (`openssl rand -base64 32`) |
 | `GEMINI_API_KEY` | Free key from https://aistudio.google.com/apikey |
 | `VAPI_PUBLIC_KEY` | Vapi public key (dashboard.vapi.ai → API Keys), used server-side only. Allow your site origin; no assistant restriction. Enables voice-call interviews |
+| `VAPI_ASSISTANT_ID` | Optional saved Vapi assistant used as the base for voice calls; INT-IQ applies interview-specific overrides |
 
 On Vercel, set the same variables (except `DATABASE_URL_UNPOOLED`) for Production and Preview.
 
@@ -59,20 +60,30 @@ Two modes share the same interviewer, storage and reports:
 - **Voice call**: a real-time Vapi call. Vapi does speech-to-text and text-to-speech; after each answer it calls
   `/api/vapi/llm/[id]/chat/completions` (OpenAI format), which saves the answer and returns the next question from
   the Gemini interviewer. The browser SDK starts calls through `/api/vapi/call/web`, so the Vapi key and the
-  assistant config never reach the browser (Vapi creates web calls with the public key + an allowed origin). Each interview's agent endpoint is protected by a signed token header.
+  assistant config never reach the browser (Vapi creates web calls with the public key + an allowed origin). If
+  `VAPI_ASSISTANT_ID` is set, that saved assistant is used with per-interview overrides while retaining its saved
+  voice. Set `VAPI_VOICE_ID` only when a different voice should override it. Each interview's agent endpoint is
+  protected by a signed token header.
+- On localhost, Vapi cannot call a loopback Gemini URL. When `VAPI_ASSISTANT_ID` is configured, INT-IQ automatically
+  uses that saved assistant's Vapi model for the live conversation and mirrors final transcript turns into the local
+  database. Gemini still creates the final report. A public tunnel or Vercel switches voice follow-ups back to the
+  Gemini custom-LLM endpoint.
 - Dropped calls keep every saved answer: reconnect, or switch the same interview to text mode (`?mode=text`).
-- Local dev: Vapi can't reach `localhost`. Expose the app with a tunnel and set `VAPI_LLM_BASE_URL`.
 - Speed: the agent says a short "Got it." as soon as the candidate stops, then streams the question as Gemini
   writes it (thinking set to minimal; a second model takes over if the first is slow). LiveKit smart endpointing
   replies quickly after a finished sentence and waits during thinking pauses.
 
 ## Anti-cheat (integrity checks)
 
-Both modes turn on the camera and check, in the browser with MediaPipe (`components/interview/proctor.tsx`):
-face in view, a second person, looking away (head turn and eye direction), a phone in view, and leaving the
-window. Text mode also blocks pasting. No video is recorded or uploaded: only counts are saved
-(`interviews.integrity`, via `/api/interviews/[id]/integrity`) and shown as an "Integrity check" on the report.
-If the camera is blocked the interview still runs and the report says "Not verified".
+- Text mode turns on MediaPipe integrity checks (`components/interview/proctor.tsx`) for face presence, another person,
+  looking away, a phone, leaving the window and paste attempts. Only counts are saved and shown in the report.
+- Voice mode includes an on-device visual coach. It first calibrates to the candidate, then MediaPipe analyzes
+  persistent framing, head/eye direction, eye-closure, lighting, posture, movement, face-presence and multiple-person
+  issues. The call also measures speaking pace, likely filler words and long pauses from the transcript. Short coaching
+  cues can be spoken during the call, and the metrics appear in the report without changing the AI content score.
+  Raw camera frames are not uploaded or stored by INT-IQ in either mode.
+- Local dev works with `VAPI_ASSISTANT_ID`. To use Gemini for the live voice follow-ups too, expose the app with a
+  tunnel and set `VAPI_LLM_BASE_URL`.
 
 ## Scripts
 

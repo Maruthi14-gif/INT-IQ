@@ -10,6 +10,7 @@ import {
   PhoneOffIcon,
   RotateCcwIcon,
   WifiOffIcon,
+  GaugeIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -18,9 +19,21 @@ import { toast } from "sonner"
 import { VoiceOrb } from "@/components/brand/voice-orb"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  VisualCoach,
+  type VisualCoachCue,
+  type VisualCoachHandle,
+} from "@/components/interview/visual-coach"
 import type { InterviewType } from "@/lib/db/schema"
+import { CLOSING_LINE } from "@/lib/voice-shared"
+import {
+  closeSpeakingTurn,
+  createDeliveryTracker,
+  deliverySummary,
+  recordUserTranscript,
+} from "@/lib/delivery-coaching"
+import { VISUAL_COACH_PREFIX } from "@/lib/visual-coaching"
 import { cn } from "@/lib/utils"
-import { preloadProctor, ProctorCam, ProctorNotice, useProctor } from "./proctor"
 
 type Props = {
   id: string
@@ -78,13 +91,21 @@ export function VoiceInterviewRoom(props: Props) {
   const endedByUser = useRef(false)
   const closingHeard = useRef(false)
   const transcriptEnd = useRef<HTMLDivElement>(null)
-  const proctor = useProctor({ interviewId: props.id, mode: "voice" })
-  const stopProctor = proctor.stop
+  const visualCoachRef = useRef<VisualCoachHandle>(null)
+  const deliveryTracker = useRef(createDeliveryTracker())
+  const lastDeliveryReminderAt = useRef(0)
+  const localVoiceFallback = useRef(false)
+  const pendingAssistantTranscript = useRef("")
+  const voiceTurnQueue = useRef<Promise<void>>(Promise.resolve())
+  const voiceSyncWarningShown = useRef(false)
+  const [delivery, setDelivery] = useState({
+    words: 0,
+    wordsPerMinute: null as number | null,
+    fillerWords: 0,
+    longPauses: 0,
+  })
 
   const allAnswered = progress.answered >= progress.total
-
-  // Download the face-check models while the candidate reads the tips.
-  useEffect(() => preloadProctor(), [])
 
   const refreshProgress = useCallback(async () => {
     try {
@@ -99,10 +120,20 @@ export function VoiceInterviewRoom(props: Props) {
   }, [props.id])
 
   const finish = useCallback(async () => {
+    visualCoachRef.current?.stop()
+    closeSpeakingTurn(deliveryTracker.current)
     setStatus("scoring")
-    await stopProctor() // camera off, anti-cheat counts saved before the report is built
     try {
-      const res = await fetch(`/api/interviews/${props.id}/finish`, { method: "POST" })
+      const res = await fetch(`/api/interviews/${props.id}/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          coaching: {
+            camera: visualCoachRef.current?.getSummary(),
+            delivery: deliverySummary(deliveryTracker.current),
+          },
+        }),
+      })
       const data = await res.json().catch(() => ({}))
       if (res.status === 400) {
         toast.info("No answers yet, so there's no report. You can come back to this interview later.")
@@ -115,7 +146,41 @@ export function VoiceInterviewRoom(props: Props) {
       setError(e instanceof Error ? e.message : "Couldn't create the report. Try again.")
       setStatus("dropped")
     }
-  }, [props.id, router, stopProctor])
+  }, [props.id, router])
+
+  const syncLocalVoiceTurn = useCallback(
+    (role: "assistant" | "user", text: string) => {
+      if (!localVoiceFallback.current || !text.trim()) return
+      voiceTurnQueue.current = voiceTurnQueue.current
+        .then(async () => {
+          const response = await fetch(`/api/interviews/${props.id}/voice-turn`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role, text }),
+          })
+          const data = await response.json().catch(() => ({}))
+          if (!response.ok) throw new Error(data.error ?? "Couldn't save the voice transcript.")
+          setProgress({
+            asked: data.asked,
+            answered: data.answered,
+            total: data.total,
+            currentQuestion: data.currentQuestion,
+          })
+          if (role === "user" && data.done && !closingHeard.current) {
+            closingHeard.current = true
+            vapiRef.current?.say(CLOSING_LINE, true, true, true)
+          }
+        })
+        .catch((syncError) => {
+          console.warn("[voice] local transcript sync failed", syncError)
+          if (!voiceSyncWarningShown.current) {
+            voiceSyncWarningShown.current = true
+            toast.error("The call is live, but answers are not saving. Please reconnect before continuing.")
+          }
+        })
+    },
+    [props.id],
+  )
 
   // Call timer
   useEffect(() => {
@@ -152,16 +217,31 @@ export function VoiceInterviewRoom(props: Props) {
       refreshProgress()
     })
     vapi.on("speech-start", () => {
+      closeSpeakingTurn(deliveryTracker.current)
       setAssistantSpeaking(true)
       refreshProgress()
     })
-    vapi.on("speech-end", () => setAssistantSpeaking(false))
+    vapi.on("speech-end", () => {
+      setAssistantSpeaking(false)
+      const spoken = pendingAssistantTranscript.current.trim()
+      pendingAssistantTranscript.current = ""
+      if (spoken) syncLocalVoiceTurn("assistant", spoken)
+    })
     vapi.on("local-volume-level", (level: number) => setMicLevel(level))
     vapi.on("network-quality-change", (e: { quality?: string }) => setWeakNetwork(e?.quality === "low" || e?.quality === "very-low"))
     vapi.on("message", (message: { type?: string; role?: string; transcriptType?: string; transcript?: string }) => {
       if (message.type !== "transcript" || !message.transcript) return
       const role = message.role === "assistant" ? "assistant" : "user"
       const final = message.transcriptType === "final"
+      if (role === "user") {
+        recordUserTranscript(deliveryTracker.current, message.transcript, final)
+        const nextDelivery = deliverySummary(deliveryTracker.current)
+        setDelivery(nextDelivery)
+        if (final) maybeGiveDeliveryCue(nextDelivery)
+        if (final) syncLocalVoiceTurn("user", message.transcript)
+      } else if (final) {
+        pendingAssistantTranscript.current = `${pendingAssistantTranscript.current} ${message.transcript}`.trim()
+      }
       if (role === "assistant" && final && message.transcript.toLowerCase().includes(CLOSING_HINT)) closingHeard.current = true
       // One paragraph per speaker turn: final phrases are appended, the live partial shows after them.
       setLines((prev) => {
@@ -187,6 +267,8 @@ export function VoiceInterviewRoom(props: Props) {
       setError((current) => current ?? describeStartError(e))
     })
     vapi.on("call-end", async () => {
+      visualCoachRef.current?.stop()
+      closeSpeakingTurn(deliveryTracker.current)
       setAssistantSpeaking(false)
       setMicLevel(0)
       const state = await refreshProgress()
@@ -211,6 +293,9 @@ export function VoiceInterviewRoom(props: Props) {
     setError(null)
     endedByUser.current = false
     closingHeard.current = false
+    pendingAssistantTranscript.current = ""
+    voiceSyncWarningShown.current = false
+    localVoiceFallback.current = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
     if (allAnswered) return finish()
 
     // Ask early so a blocked mic gets a clear message instead of a failed call.
@@ -227,17 +312,18 @@ export function VoiceInterviewRoom(props: Props) {
     setStatus("connecting")
     // Wake up the voice agent endpoint now, so the first answer doesn't wait for a cold start.
     void fetch(`/api/vapi/llm/${props.id}/chat/completions`).catch(() => {})
-    // Anti-cheat camera (resolves once the camera is allowed or refused; the call starts either way).
-    await proctor.start()
+    void visualCoachRef.current?.start()
     try {
       const vapi = await getVapi()
       // The SDK requires an assistant argument; our server ignores this placeholder and
       // builds the real interviewer for this interview id.
       const call = await vapi.start("int-iq-interviewer", { metadata: { interviewId: props.id } })
       if (!call) {
+        visualCoachRef.current?.stop()
         setStatus((s) => (s === "connecting" ? "idle" : s))
       }
     } catch (e) {
+      visualCoachRef.current?.stop()
       setStatus("idle")
       setError(describeStartError(e))
     }
@@ -250,6 +336,7 @@ export function VoiceInterviewRoom(props: Props) {
         : "End the interview? You haven't answered anything yet, so there won't be a report."
     if (!window.confirm(message)) return
     endedByUser.current = true
+    visualCoachRef.current?.stop()
     if (status === "live" || status === "connecting") await vapiRef.current?.stop()
     else if (progress.answered > 0) finish()
     else router.push("/dashboard")
@@ -262,8 +349,36 @@ export function VoiceInterviewRoom(props: Props) {
     setMuted(!muted)
   }
 
+  const handleVisualCue = useCallback((cue: VisualCoachCue) => {
+    const vapi = vapiRef.current
+    if (!vapi) return
+    vapi.say(cue.message, false, true, false)
+    toast.info(cue.label)
+  }, [])
+
+  function maybeGiveDeliveryCue(next: ReturnType<typeof deliverySummary>) {
+    if (next.words < 45 || Date.now() - lastDeliveryReminderAt.current < 30_000) return
+    let message: string | null = null
+    let label = ""
+    if (next.wordsPerMinute && next.wordsPerMinute > 190) {
+      label = "Speaking pace is fast"
+      message = "Try slowing down slightly and leave a short pause between your main points."
+    } else if (next.fillerWords >= 5 && next.fillerWords / next.words > 0.04) {
+      label = "Frequent filler words"
+      message = "Take a brief pause instead of using filler words while you organize your next point."
+    }
+    if (!message) return
+    lastDeliveryReminderAt.current = Date.now()
+    vapiRef.current?.say(`${VISUAL_COACH_PREFIX} ${message}`, false, true, false)
+    toast.info(label)
+  }
+
   const questionNumber = Math.min(progress.total, Math.max(1, progress.asked))
   const live = status === "live"
+  const latestAssistantLine = [...lines].reverse().find((line) => line.role === "assistant")
+  const liveAssistantText = latestAssistantLine
+    ? `${latestAssistantLine.text} ${latestAssistantLine.partial}`.trim()
+    : ""
   const statusText =
     status === "connecting"
       ? "Connecting… allow the microphone if your browser asks"
@@ -333,7 +448,12 @@ export function VoiceInterviewRoom(props: Props) {
         className="relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] px-6 py-10 text-center text-white ring-1 ring-white/10 sm:px-12"
       >
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_70%_at_50%_0%,rgb(99_102_241/0.4),transparent_70%)]" />
-        <ProctorCam proctor={proctor} className="absolute top-3 right-3" />
+        <VisualCoach
+          ref={visualCoachRef}
+          active={live && !assistantSpeaking}
+          onCue={handleVisualCue}
+          className="absolute right-4 top-4 z-10 w-32 sm:w-40"
+        />
         <VoiceOrb
           className={cn("mx-auto size-28 transition-opacity", !live && "opacity-70")}
           speaking={assistantSpeaking || status === "connecting"}
@@ -343,11 +463,16 @@ export function VoiceInterviewRoom(props: Props) {
           {live && !assistantSpeaking && !muted && <MicLevel level={micLevel} />}
           {statusText}
         </p>
-        <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl" data-testid="interview-question">
-          {progress.currentQuestion}
-        </p>
-        <ProctorNotice proctor={proctor} className="mt-4" />
-        {live && !assistantSpeaking && !muted && !proctor.warning && (
+        {liveAssistantText && (
+          <p
+            className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl"
+            data-testid="interview-question"
+            aria-live="polite"
+          >
+            {liveAssistantText}
+          </p>
+        )}
+        {live && !assistantSpeaking && !muted && (
           <p className="mt-4 text-xs text-white/55">When you finish your answer, pause for a second and the interviewer will reply.</p>
         )}
 
@@ -382,6 +507,16 @@ export function VoiceInterviewRoom(props: Props) {
           </div>
         )}
       </section>
+
+      {live && delivery.words > 0 && (
+        <section className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border bg-card px-4 py-3 text-xs" aria-label="Live delivery coaching">
+          <span className="flex items-center gap-1.5 font-medium"><GaugeIcon className="size-4 text-brand-text" /> Live delivery</span>
+          <span><b>{delivery.wordsPerMinute ?? "—"}</b> words/min</span>
+          <span><b>{delivery.fillerWords}</b> possible fillers</span>
+          <span><b>{delivery.longPauses}</b> long pauses</span>
+          <span className="ml-auto text-muted-foreground">Measured locally from your transcript</span>
+        </section>
+      )}
 
       {/* problems */}
       {(error || weakNetwork || status === "dropped") && (

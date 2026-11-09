@@ -47,6 +47,7 @@ function formatTime(seconds: number) {
 export function InterviewRoom(props: Props) {
   const router = useRouter()
   const [question, setQuestion] = useState(props.initialQuestion)
+  const [visibleQuestion, setVisibleQuestion] = useState(props.awaitingNext ? props.initialQuestion : "")
   const [number, setNumber] = useState(props.initialNumber)
   const [phase, setPhase] = useState<Phase>(props.awaitingNext ? "answering" : "ready")
   const [draft, setDraft] = useState("")
@@ -57,6 +58,7 @@ export function InterviewRoom(props: Props) {
   const [pendingAnswer, setPendingAnswer] = useState<string | null>(props.awaitingNext ? "" : null)
   const [elapsed, setElapsed] = useState(0)
   const micWanted = useRef(false) // user turned the mic on at least once: auto-listen after each question
+  const questionRevealTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const recognitionSupported = useRecognitionSupported()
   const speaker = useSpeaker()
@@ -78,30 +80,63 @@ export function InterviewRoom(props: Props) {
     return () => clearInterval(t)
   }, [props.startedAt])
 
+  const stopQuestionReveal = useCallback(() => {
+    if (questionRevealTimer.current) clearInterval(questionRevealTimer.current)
+    questionRevealTimer.current = null
+  }, [])
+
+  const revealQuestion = useCallback(
+    (text: string) => {
+      stopQuestionReveal()
+      const words = text.match(/\S+\s*/g) ?? [text]
+      let visibleWords = 0
+      setVisibleQuestion("")
+
+      const revealNextWord = () => {
+        visibleWords += 1
+        setVisibleQuestion(words.slice(0, visibleWords).join("").trimEnd())
+        if (visibleWords >= words.length) stopQuestionReveal()
+      }
+
+      revealNextWord()
+      if (words.length > 1) questionRevealTimer.current = setInterval(revealNextWord, 280)
+    },
+    [stopQuestionReveal],
+  )
+
+  useEffect(() => stopQuestionReveal, [stopQuestionReveal])
+
   const listen = useCallback(() => {
     speaker.stop()
+    stopQuestionReveal()
+    setVisibleQuestion(question)
     if (dictation.start(draft)) {
       micWanted.current = true
       setPhase("answering")
     } else {
       setPhase("answering")
     }
-  }, [dictation, draft, speaker])
+  }, [dictation, draft, question, speaker, stopQuestionReveal])
 
   const ask = useCallback(
     (text: string) => {
       setPhase("asking")
       if (muted) {
+        stopQuestionReveal()
+        setVisibleQuestion(text)
         setPhase("answering")
         if (micWanted.current) dictation.start("")
         return
       }
+      revealQuestion(text)
       speaker.speak(text, () => {
+        stopQuestionReveal()
+        setVisibleQuestion(text)
         setPhase("answering")
         if (micWanted.current) dictation.start("")
       })
     },
-    [dictation, muted, speaker],
+    [dictation, muted, revealQuestion, speaker, stopQuestionReveal],
   )
 
   // Ask the first question when the room opens. `ask` changes on every render, so the
@@ -241,6 +276,9 @@ export function InterviewRoom(props: Props) {
             onClick={() => {
               setMuted((m) => !m)
               speaker.stop()
+              stopQuestionReveal()
+              setVisibleQuestion(question)
+              if (phase === "asking") setPhase("answering")
             }}
             aria-label={muted ? "Turn interviewer voice on" : "Mute interviewer voice"}
           >
@@ -283,7 +321,7 @@ export function InterviewRoom(props: Props) {
           {status}
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl" data-testid="interview-question">
-          {busy ? "…" : question}
+          {busy ? "…" : visibleQuestion}
         </p>
         {!busy && (
           <button

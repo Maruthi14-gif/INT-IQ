@@ -2,7 +2,15 @@ import { nextQuestion } from "@/lib/ai/interviewer"
 import { aiError, apiUser, firstName, jsonError } from "@/lib/api"
 import { getInterview, saveTurns } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
-import { buildVoiceAssistant, isVoiceConfigured, VAPI_API, vapiPublicKey, voiceAgentBaseUrl } from "@/lib/vapi"
+import {
+  buildVoiceAssistant,
+  isVoiceConfigured,
+  isLoopbackVoiceUrl,
+  VAPI_API,
+  vapiAssistantId,
+  vapiPublicKey,
+  voiceAgentBaseUrl,
+} from "@/lib/vapi"
 
 export const maxDuration = 60
 
@@ -46,11 +54,24 @@ export async function POST(request: Request) {
   }
 
   const current = turns.at(-1)!.question
+  const assistantId = vapiAssistantId()
+  const baseUrl = voiceAgentBaseUrl(request.url)
+  const localFallback = Boolean(assistantId) && isLoopbackVoiceUrl(baseUrl)
   const assistant = buildVoiceAssistant({
     interviewId: interview.id,
     firstMessage: answered > 0 ? `Welcome back, let's pick up where we left off. ${current}` : current,
-    baseUrl: voiceAgentBaseUrl(request.url),
+    baseUrl,
+    preserveSavedVoice: Boolean(assistantId),
+    localFallback: localFallback
+      ? {
+          type: interview.type,
+          targetRole: interview.targetRole,
+          totalQuestions: interview.totalQuestions,
+          questionNumber: turns.length,
+        }
+      : undefined,
   })
+  const callConfig = assistantId ? { assistantId, assistantOverrides: assistant } : { assistant }
 
   let response: Response
   try {
@@ -62,7 +83,7 @@ export async function POST(request: Request) {
         // The key only accepts its allowed origins (set in the Vapi dashboard).
         origin: new URL(request.url).origin,
       },
-      body: JSON.stringify({ assistant, roomDeleteOnUserLeaveEnabled: body?.roomDeleteOnUserLeaveEnabled }),
+      body: JSON.stringify({ ...callConfig, roomDeleteOnUserLeaveEnabled: body?.roomDeleteOnUserLeaveEnabled }),
       signal: AbortSignal.timeout(20_000),
     })
   } catch (error) {
