@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794067788002,
+      "tag": "0000_init_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794218222852,
+      "tag": "0001_interviews_and_resume",
+      "breakpoints": true
+    }
+  ]
+}
