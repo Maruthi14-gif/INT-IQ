@@ -1,4 +1,5 @@
 import { integer, jsonb, pgTable, text, timestamp, uuid, index } from "drizzle-orm/pg-core"
+import type { IntegrityLog } from "../integrity"
 import { authUsers } from "./neon-auth"
 
 /* ─────────────────────────────────────────────────────────────
@@ -89,6 +90,8 @@ export const interviews = pgTable(
     status: text("status", { enum: ["in_progress", "completed"] }).default("in_progress").notNull(),
     turns: jsonb("turns").$type<InterviewTurn[]>().default([]).notNull(),
     report: jsonb("report").$type<InterviewReport>(),
+    /** Anti-cheat counts from the camera and tab checks (lib/integrity.ts). Never video. */
+    integrity: jsonb("integrity").$type<IntegrityLog>(),
     overallScore: integer("overall_score"),
     startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),

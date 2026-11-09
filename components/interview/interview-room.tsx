@@ -11,7 +11,7 @@ import {
   VolumeXIcon,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react"
 import { toast } from "sonner"
 import { VoiceBars, VoiceOrb } from "@/components/brand/voice-orb"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { InterviewType } from "@/lib/db/schema"
 import { useDictation, useRecognitionSupported, useSpeaker } from "@/lib/speech"
 import { cn } from "@/lib/utils"
+import { ProctorCam, ProctorNotice, useProctor } from "./proctor"
 
 type Props = {
   id: string
@@ -61,6 +62,13 @@ export function InterviewRoom(props: Props) {
   const speaker = useSpeaker()
   const dictation = useDictation(setDraft)
   const isLast = number >= props.totalQuestions
+  const proctor = useProctor({ interviewId: props.id, mode: "text" })
+  const startProctor = proctor.start
+
+  // Anti-cheat camera runs for the whole interview.
+  useEffect(() => {
+    void startProctor()
+  }, [startProctor])
 
   // Interview timer
   useEffect(() => {
@@ -115,6 +123,9 @@ export function InterviewRoom(props: Props) {
     setPendingAnswer(answer)
     setPhase(isLast ? "scoring" : "thinking")
     try {
+      // Save the anti-cheat counts first: the last answer builds the report.
+      if (isLast) await proctor.stop()
+      else void proctor.flush()
       const res = await fetch(`/api/interviews/${props.id}/answer`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -134,6 +145,7 @@ export function InterviewRoom(props: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Please try again.")
       setPhase("answering")
+      if (isLast) void proctor.start()
     }
   }
 
@@ -143,6 +155,7 @@ export function InterviewRoom(props: Props) {
     speaker.stop()
     setPhase("scoring")
     try {
+      await proctor.stop()
       const res = await fetch(`/api/interviews/${props.id}/finish`, { method: "POST" })
       const data = await res.json().catch(() => ({}))
       if (res.status === 400) {
@@ -155,7 +168,15 @@ export function InterviewRoom(props: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't finish. Please try again.")
       setPhase("answering")
+      void proctor.start()
     }
+  }
+
+  /** Answers must be the candidate's own words: pasting is blocked and noted in the report. */
+  function blockPaste(e: ClipboardEvent | DragEvent) {
+    e.preventDefault()
+    proctor.notePaste()
+    toast.warning("Pasting is turned off during the interview. Answer in your own words.")
   }
 
   function submit() {
@@ -181,15 +202,15 @@ export function InterviewRoom(props: Props) {
     speaker.blocked && phase === "asking"
       ? "Tap replay to hear the question"
       : phase === "asking"
-      ? "Interviewer is speaking"
+      ? "Interviewer is speaking — listen"
       : phase === "thinking"
-        ? "Interviewer is thinking"
+        ? "Interviewer is thinking…"
         : phase === "scoring"
           ? "Scoring your interview"
           : dictation.listening
-            ? "Listening"
+            ? "Listening to you — tap Pause mic when done"
             : phase === "answering"
-              ? "Your turn"
+              ? "Your turn — tap Start speaking, or type"
               : "Getting ready"
 
   if (phase === "scoring") {
@@ -254,6 +275,7 @@ export function InterviewRoom(props: Props) {
         className="relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] px-6 py-10 text-center text-white ring-1 ring-white/10 sm:px-12"
       >
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_70%_at_50%_0%,rgb(99_102_241/0.4),transparent_70%)]" />
+        <ProctorCam proctor={proctor} className="absolute top-3 right-3" />
         <VoiceOrb className={cn("mx-auto size-28 transition-opacity", busy && "opacity-60")} speaking={speaker.speaking || busy} />
         <p className="mt-6 flex items-center justify-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase" aria-live="polite">
           {dictation.listening && <VoiceBars className="h-3 text-emerald-300" bars={4} />}
@@ -273,17 +295,25 @@ export function InterviewRoom(props: Props) {
             {speaker.blocked ? "Tap to hear the question" : "Replay question"}
           </button>
         )}
+        <ProctorNotice proctor={proctor} className="mt-4" />
       </section>
 
       {/* answer */}
       <section aria-label="Your answer" className="rounded-2xl border bg-card p-4 sm:p-5">
+        <ol className="mb-3 flex flex-wrap gap-x-4 gap-y-1 border-b pb-3 text-xs text-muted-foreground">
+          <li><span className="font-semibold text-brand-text">1</span> {recognitionSupported ? "Tap Start speaking and answer out loud (or type)" : "Type your answer"}</li>
+          <li><span className="font-semibold text-brand-text">2</span> Check the text below</li>
+          <li><span className="font-semibold text-brand-text">3</span> Press {isLast ? "Finish interview" : "Send answer"}</li>
+        </ol>
         <Textarea
           value={pendingAnswer ?? draft}
           onChange={(e) => setDraft(e.target.value)}
+          onPaste={blockPaste}
+          onDrop={blockPaste}
           readOnly={dictation.listening || busy || pendingAnswer !== null}
           placeholder={
             recognitionSupported
-              ? "Tap the mic and answer out loud. Your words appear here, and you can edit them before sending."
+              ? "Tap Start speaking and answer out loud. Your words appear here, and you can edit them before sending."
               : "Type your answer here. (Voice answers work in Chrome and Edge.)"
           }
           aria-label="Your answer"
@@ -312,13 +342,18 @@ export function InterviewRoom(props: Props) {
               aria-pressed={dictation.listening}
             >
               {dictation.listening ? <MicOffIcon /> : <MicIcon />}
-              {dictation.listening ? "Stop" : draft ? "Keep talking" : "Answer"}
+              {dictation.listening ? "Pause mic" : draft ? "Continue speaking" : "Start speaking"}
             </Button>
           )}
           <span className="hidden text-xs text-muted-foreground sm:inline">Ctrl + Enter to send</span>
-          <Button onClick={submit} disabled={busy || phase === "ready"} className="ml-auto h-11 px-5">
+          <Button
+            onClick={submit}
+            disabled={busy || phase === "ready"}
+            variant={!draft.trim() && pendingAnswer === null ? "outline" : "default"}
+            className="ml-auto h-11 px-5"
+          >
             {busy ? <Loader2Icon className="animate-spin" /> : <SendIcon />}
-            {pendingAnswer !== null ? "Try again" : !draft.trim() ? "Skip" : isLast ? "Finish interview" : "Send answer"}
+            {pendingAnswer !== null ? "Try again" : !draft.trim() ? "Skip question" : isLast ? "Finish interview" : "Send answer"}
           </Button>
         </div>
       </section>

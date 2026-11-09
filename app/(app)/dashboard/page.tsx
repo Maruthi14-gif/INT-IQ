@@ -1,4 +1,4 @@
-import { CheckIcon, ClockIcon, GaugeIcon, HistoryIcon, MicIcon, TrophyIcon, type LucideIcon } from "lucide-react"
+import { ArrowRightIcon, CheckIcon, ClockIcon, FileTextIcon, GaugeIcon, MicIcon, PlayIcon, TrophyIcon, type LucideIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
@@ -7,7 +7,7 @@ import { InterviewList } from "@/components/report/interview-list"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { listInterviews, practiceMinutes } from "@/lib/interviews"
+import { listInterviews, practiceMinutes, type InterviewSummary } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
 import { requireUser } from "@/lib/session"
 import { cn } from "@/lib/utils"
@@ -26,20 +26,36 @@ export default function DashboardPage() {
   )
 }
 
+/** The one thing the student should do next. */
+type NextStep =
+  | { kind: "resume" }
+  | { kind: "first-interview" }
+  | { kind: "continue"; interview: InterviewSummary }
+  | { kind: "practice"; last: InterviewSummary }
+
 async function Dashboard() {
   const user = await requireUser()
   const [profile, interviews] = await Promise.all([getOrCreateProfile(user.id), listInterviews(user.id, 20)])
   const firstName = user.name?.trim().split(/\s+/)[0] || user.email.split("@")[0]
   const completed = interviews.filter((i) => i.status === "completed")
+  const unfinished = interviews.find((i) => i.status === "in_progress")
   const scored = completed.filter((i) => i.overallScore !== null)
   const average = scored.length ? Math.round(scored.reduce((s, i) => s + (i.overallScore ?? 0), 0) / scored.length) : null
   const best = scored.length ? Math.max(...scored.map((i) => i.overallScore ?? 0)) : null
+  const hasResume = Boolean(profile.resumeText)
+
+  const next: NextStep = unfinished
+    ? { kind: "continue", interview: unfinished }
+    : completed.length > 0
+      ? { kind: "practice", last: completed[0] }
+      : hasResume
+        ? { kind: "first-interview" }
+        : { kind: "resume" }
 
   const steps = [
-    { label: "Create your account", done: true, href: null },
-    { label: "Upload your resume", done: Boolean(profile.resumeText), href: "/resume" },
-    { label: "Choose your target role", done: Boolean(profile.targetRole), href: "/resume" },
-    { label: "Finish your first interview", done: completed.length > 0, href: "/interview" },
+    { label: "Add your resume", hint: "So questions are about your projects", done: hasResume, href: "/resume" },
+    { label: "Do a mock interview", hint: "Voice call or text, about 10 minutes", done: completed.length > 0, href: "/interview" },
+    { label: "Read your report", hint: "Score, feedback, better answers", done: completed.length > 0, href: completed[0] ? `/reports/${completed[0].id}` : null },
   ]
 
   return (
@@ -59,39 +75,30 @@ async function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <StartInterviewCard className="lg:col-span-2" />
-        <SetupChecklist steps={steps} />
+        <NextStepCard next={next} className="lg:col-span-2" />
+        <HowItWorks steps={steps} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard icon={TrophyIcon} label="Interviews completed" value={String(completed.length)} hint={best !== null ? `Best score ${best}` : null} />
-        <StatCard icon={GaugeIcon} label="Average score" value={average !== null ? String(average) : "—"} hint={average !== null ? "Out of 100" : null} />
-        <StatCard icon={ClockIcon} label="Practice time" value={`${practiceMinutes(interviews)} min`} hint={null} />
-      </div>
-
-      <section className="overflow-hidden rounded-2xl border bg-card">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="font-medium">Recent interviews</h2>
-          {interviews.length > 0 && (
-            <Link href="/reports" className="text-sm font-medium text-brand-text hover:opacity-80">
-              View all
-            </Link>
-          )}
-        </div>
-        {interviews.length > 0 ? (
-          <InterviewList items={interviews.slice(0, 5)} />
-        ) : (
-          <div className="flex flex-col items-center px-6 py-14 text-center">
-            <span className="grid size-12 place-items-center rounded-2xl border bg-muted text-muted-foreground">
-              <HistoryIcon className="size-5" />
-            </span>
-            <p className="mt-4 font-medium">No interviews yet</p>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Your reports will show up here after your first practice round.
-            </p>
+      {/* Stats and history only once there's something to show. */}
+      {interviews.length > 0 && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard icon={TrophyIcon} label="Interviews completed" value={String(completed.length)} hint={best !== null ? `Best score ${best}` : "Finish one to see scores"} />
+            <StatCard icon={GaugeIcon} label="Average score" value={average !== null ? String(average) : "—"} hint={average !== null ? "Out of 100" : "Finish one to see scores"} />
+            <StatCard icon={ClockIcon} label="Practice time" value={`${practiceMinutes(interviews)} min`} hint="Time spent in interviews" />
           </div>
-        )}
-      </section>
+
+          <section className="overflow-hidden rounded-2xl border bg-card">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="font-medium">Recent interviews</h2>
+              <Link href="/reports" className="text-sm font-medium text-brand-text hover:opacity-80">
+                View all
+              </Link>
+            </div>
+            <InterviewList items={interviews.slice(0, 5)} />
+          </section>
+        </>
+      )}
     </>
   )
 }
@@ -107,109 +114,140 @@ function DashboardSkeleton() {
         <Skeleton className="h-64 rounded-2xl lg:col-span-2" />
         <Skeleton className="h-64 rounded-2xl" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Skeleton className="h-32 rounded-2xl" />
-        <Skeleton className="h-32 rounded-2xl" />
-        <Skeleton className="h-32 rounded-2xl" />
-      </div>
     </>
   )
 }
 
-/* ── Start interview ────────────────────────────────────────── */
+/* ── Next step ──────────────────────────────────────────────── */
 
-function StartInterviewCard({ className }: { className?: string }) {
+function NextStepCard({ next, className }: { next: NextStep; className?: string }) {
+  const content = {
+    resume: {
+      eyebrow: "Step 1 of 3",
+      title: "Add your resume",
+      body: "Upload your resume and pick the role you want. The interviewer will then ask about your own projects and skills. It takes about a minute.",
+      primary: { href: "/resume", label: "Add my resume", icon: FileTextIcon },
+      secondary: { href: "/interview", label: "Skip for now and start an interview" },
+    },
+    "first-interview": {
+      eyebrow: "Step 2 of 3",
+      title: "Do your first mock interview",
+      body: "Talk to the AI interviewer for about 10 minutes. It asks follow-up questions based on your answers, then gives you a detailed report.",
+      primary: { href: "/interview", label: "Start interview", icon: MicIcon },
+      secondary: { href: "/resume", label: "Review my resume first" },
+    },
+    continue: {
+      eyebrow: "Unfinished interview",
+      title: "Pick up where you left off",
+      body: "Your answers so far are saved. Continue the interview to get your report.",
+      primary: { href: next.kind === "continue" ? `/interview/${next.interview.id}` : "/interview", label: "Continue interview", icon: PlayIcon },
+      secondary: { href: "/interview", label: "Start a new one instead" },
+    },
+    practice: {
+      eyebrow: "Keep practicing",
+      title: next.kind === "practice" && next.last.overallScore !== null ? `Last score: ${next.last.overallScore}. Ready to beat it?` : "Ready for another round?",
+      body: "Each round asks new questions. Try a different round type to cover technical, behavioral and HR.",
+      primary: { href: "/interview", label: "Start interview", icon: MicIcon },
+      secondary: next.kind === "practice" ? { href: `/reports/${next.last.id}`, label: "See my last report" } : null,
+    },
+  }[next.kind]
+
+  const PrimaryIcon = content.primary.icon
+
   return (
     <section
       className={cn(
         "relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] p-6 text-white ring-1 ring-white/10 sm:p-8",
         className,
       )}
+      aria-labelledby="next-step-title"
     >
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_90%_at_85%_20%,rgb(99_102_241/0.45),transparent_70%)]" />
       <div className="absolute inset-0 -z-10 bg-grid opacity-25 [mask-image:linear-gradient(to_left,black,transparent)]" />
 
       <div className="flex items-start justify-between gap-6">
         <div className="max-w-md">
-          <Badge className="border-white/15 bg-white/10 text-white/80">Mock interview</Badge>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">Start a practice interview</h2>
-          <p className="mt-2 text-white/70">
-            Pick a round and talk it through with your AI interviewer. It takes about 10 minutes.
-          </p>
+          <Badge className="border-white/15 bg-white/10 text-white/80">{content.eyebrow}</Badge>
+          <h2 id="next-step-title" className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
+            {content.title}
+          </h2>
+          <p className="mt-2 text-white/70">{content.body}</p>
         </div>
         <VoiceOrb className="hidden size-24 shrink-0 sm:grid" />
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {["Technical", "Behavioral", "HR"].map((round) => (
-          <span key={round} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm text-white/80">
-            {round}
-          </span>
-        ))}
+      <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
+        <Button asChild className="h-11 bg-white px-5 text-[15px] text-[#0d0c1d] hover:bg-white/90">
+          <Link href={content.primary.href}>
+            <PrimaryIcon />
+            {content.primary.label}
+          </Link>
+        </Button>
+        {content.secondary && (
+          <Link href={content.secondary.href} className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white">
+            {content.secondary.label}
+            <ArrowRightIcon className="size-3.5" />
+          </Link>
+        )}
       </div>
-
-      <Button asChild className="mt-8 h-11 bg-white px-5 text-[15px] text-[#0d0c1d] hover:bg-white/90">
-        <Link href="/interview">
-          <MicIcon />
-          Start interview
-        </Link>
-      </Button>
     </section>
   )
 }
 
-/* ── Setup checklist ────────────────────────────────────────── */
+/* ── How it works ───────────────────────────────────────────── */
 
-function SetupChecklist({ steps }: { steps: { label: string; done: boolean; href: string | null }[] }) {
-  const done = steps.filter((s) => s.done).length
-  const pct = Math.round((done / steps.length) * 100)
+function HowItWorks({ steps }: { steps: { label: string; hint: string; done: boolean; href: string | null }[] }) {
+  const current = steps.findIndex((s) => !s.done)
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card p-6">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-medium">Get set up</h2>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          {done} of {steps.length}
-        </span>
-      </div>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
-      </div>
-      <ul className="mt-5 space-y-3.5">
-        {steps.map((step) => {
-          const content = (
+    <section className="flex flex-col rounded-2xl border bg-card p-6" aria-labelledby="how-title">
+      <h2 id="how-title" className="font-medium">
+        How INT-IQ works
+      </h2>
+      <ol className="mt-5 space-y-5">
+        {steps.map((step, i) => {
+          const isCurrent = i === current
+          const body = (
             <>
               <span
                 className={cn(
-                  "grid size-5 shrink-0 place-items-center rounded-full border",
-                  step.done ? "border-transparent bg-brand text-primary-foreground" : "border-dashed",
+                  "grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold",
+                  step.done && "border-transparent bg-brand text-primary-foreground",
+                  isCurrent && "border-brand text-brand-text ring-3 ring-brand/20",
+                  !step.done && !isCurrent && "text-muted-foreground",
                 )}
               >
-                {step.done && <CheckIcon className="size-3" />}
+                {step.done ? <CheckIcon className="size-3.5" /> : i + 1}
               </span>
-              <span className={cn(step.done && "text-muted-foreground line-through decoration-border")}>{step.label}</span>
+              <span>
+                <span className={cn("block text-sm font-medium", step.done && "text-muted-foreground")}>
+                  {step.label}
+                  {isCurrent && <span className="ml-2 text-xs font-normal text-brand-text">← you are here</span>}
+                </span>
+                <span className="block text-xs text-muted-foreground">{step.hint}</span>
+              </span>
             </>
           )
           return (
-            <li key={step.label} className="text-sm">
-              {!step.done && step.href ? (
-                <Link href={step.href} className="flex items-center gap-3 hover:text-brand-text">
-                  {content}
+            <li key={step.label}>
+              {step.href && !step.done ? (
+                <Link href={step.href} className="flex gap-3 rounded-lg hover:text-brand-text">
+                  {body}
                 </Link>
               ) : (
-                <span className="flex items-center gap-3">{content}</span>
+                <span className="flex gap-3">{body}</span>
               )}
             </li>
           )
         })}
-      </ul>
+      </ol>
     </section>
   )
 }
 
 /* ── Stats ──────────────────────────────────────────────────── */
 
-function StatCard({ icon: Icon, label, value, hint }: { icon: LucideIcon; label: string; value: string; hint: string | null }) {
+function StatCard({ icon: Icon, label, value, hint }: { icon: LucideIcon; label: string; value: string; hint: string }) {
   return (
     <div className="rounded-2xl border bg-card p-5">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -217,7 +255,7 @@ function StatCard({ icon: Icon, label, value, hint }: { icon: LucideIcon; label:
         {label}
       </div>
       <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{hint ?? "Complete an interview to see this."}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   )
 }

@@ -62,6 +62,17 @@ Two modes share the same interviewer, storage and reports:
   assistant config never reach the browser (Vapi creates web calls with the public key + an allowed origin). Each interview's agent endpoint is protected by a signed token header.
 - Dropped calls keep every saved answer: reconnect, or switch the same interview to text mode (`?mode=text`).
 - Local dev: Vapi can't reach `localhost`. Expose the app with a tunnel and set `VAPI_LLM_BASE_URL`.
+- Speed: the agent says a short "Got it." as soon as the candidate stops, then streams the question as Gemini
+  writes it (thinking set to minimal; a second model takes over if the first is slow). LiveKit smart endpointing
+  replies quickly after a finished sentence and waits during thinking pauses.
+
+## Anti-cheat (integrity checks)
+
+Both modes turn on the camera and check, in the browser with MediaPipe (`components/interview/proctor.tsx`):
+face in view, a second person, looking away (head turn and eye direction), a phone in view, and leaving the
+window. Text mode also blocks pasting. No video is recorded or uploaded: only counts are saved
+(`interviews.integrity`, via `/api/interviews/[id]/integrity`) and shown as an "Integrity check" on the report.
+If the camera is blocked the interview still runs and the report says "Not verified".
 
 ## Scripts
 
@@ -77,19 +88,28 @@ Two modes share the same interviewer, storage and reports:
 ## Project structure
 
 ```
-app/
+app/                       Pages and API routes (Next.js App Router)
   page.tsx                 Landing page
   (auth)/sign-in/          Google + email code sign-in
-  (app)/                   Signed-in area (sidebar layout, error screen)
+  (app)/                   Signed-in area: dashboard, resume, interview, reports
   api/auth/[...path]/      Neon Auth proxy
-components/                landing/, auth/, app/, brand/, ui/ (shadcn)
-lib/
+  api/interviews/          Create, answer, finish, integrity counts
+  api/resume/              Resume upload + AI analysis
+  api/vapi/                Voice call proxy + custom-LLM agent endpoint
+components/                React components, one folder per feature
+  landing/ auth/ app/      Landing page, sign-in form, sidebar shell
+  interview/ report/       Setup, text room, voice room, camera checks; report cards
+  resume/ brand/ ui/       Resume form; logo and orb; shadcn primitives
+lib/                       Server and shared logic
+  ai/                      Gemini model + interviewer prompts and grading
   auth/                    Neon Auth server + client, error helpers
-  ai/                      Gemini model + interviewer prompts
   db/                      Drizzle schema, Neon connection, retry helper
-  session.ts               getSession / requireUser
+  hooks/                   React hooks
+  interviews.ts            Interview data access
   profiles.ts              Profile data access
-drizzle/                   SQL migrations
+  vapi.ts  integrity.ts    Voice assistant config; anti-cheat scoring
+  session.ts  api.ts       getSession / requireUser; route helpers
+drizzle/                   SQL migrations (applied with npm run db:migrate)
 e2e/                       Playwright tests
 proxy.ts                   Route protection (Neon Auth middleware)
 neon.ts                    Neon services for the branch

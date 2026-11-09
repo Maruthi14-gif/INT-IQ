@@ -4,20 +4,20 @@ import { STORAGE_STATE, expectNoHorizontalOverflow, readTestUser, signInWithPass
 test.describe("Dashboard (signed in)", () => {
   test.use({ storageState: STORAGE_STATE })
 
-  test("shows the welcome, role from the database, and all cards", async ({ page }) => {
+  test("new student sees one clear next step and how it works", async ({ page }) => {
     const problems = watchForErrors(page)
     await page.goto("/dashboard")
 
     await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
     await expect(page.getByTestId("profile-role").filter({ visible: true })).toHaveText("student")
-    await expect(page.getByRole("heading", { name: "Start a practice interview" })).toBeVisible()
-    await expect(page.getByRole("link", { name: "Start interview" })).toHaveAttribute("href", "/interview")
-    await expect(page.getByRole("heading", { name: "Get set up" })).toBeVisible()
-    await expect(page.getByText("1 of 4").filter({ visible: true })).toBeVisible()
-    for (const stat of ["Interviews completed", "Average score", "Practice time"]) {
-      await expect(page.getByText(stat).filter({ visible: true })).toBeVisible()
-    }
-    await expect(page.getByText("No interviews yet").filter({ visible: true })).toBeVisible()
+    // No resume yet, so step 1 is the next step
+    await expect(page.getByRole("heading", { name: "Add your resume" })).toBeVisible()
+    await expect(page.getByRole("link", { name: "Add my resume" })).toHaveAttribute("href", "/resume")
+    await expect(page.getByRole("link", { name: /Skip for now/ })).toHaveAttribute("href", "/interview")
+    await expect(page.getByRole("heading", { name: "How INT-IQ works" })).toBeVisible()
+    await expect(page.getByText("← you are here").filter({ visible: true })).toBeVisible()
+    // Stats and history stay hidden until there's an interview
+    await expect(page.getByText("Interviews completed")).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     expect(problems).toEqual([])
   })
@@ -36,7 +36,7 @@ test.describe("Dashboard (signed in)", () => {
     const sidebar = page.locator("[data-slot=sidebar]").first()
 
     await expect(page.getByRole("link", { name: "Dashboard" })).toHaveAttribute("data-active", "true")
-    await expect(page.getByRole("link", { name: "Mock interview" })).toHaveAttribute("href", "/interview")
+    await expect(page.getByRole("link", { name: "Mock interview", exact: true })).toHaveAttribute("href", "/interview")
     const soon = page.getByRole("button", { name: "CV tailor" })
     await expect(soon).toHaveAttribute("aria-disabled", "true")
 

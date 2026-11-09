@@ -1,5 +1,5 @@
 import "server-only"
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { withRetry } from "@/lib/db/retry"
 import { authUsers } from "@/lib/db/neon-auth"
@@ -11,6 +11,7 @@ import {
   type InterviewTurn,
   type InterviewType,
 } from "@/lib/db/schema"
+import type { IntegritySession } from "@/lib/integrity"
 
 /* Every function takes the signed-in user's id, so nobody can read another user's interviews. */
 
@@ -66,6 +67,35 @@ export async function saveTurns(userId: string, id: string, turns: InterviewTurn
   await db
     .update(interviews)
     .set({ turns })
+    .where(and(eq(interviews.id, id), eq(interviews.userId, userId)))
+}
+
+/**
+ * Saves `next` only if the stored turns are still `expected` (nobody changed them meanwhile).
+ * The voice agent can get overlapping requests when the candidate keeps talking; the newer one wins.
+ */
+export async function saveTurnsIfUnchanged(userId: string, id: string, expected: InterviewTurn[], next: InterviewTurn[]) {
+  const rows = await db
+    .update(interviews)
+    .set({ turns: next })
+    .where(
+      and(
+        eq(interviews.id, id),
+        eq(interviews.userId, userId),
+        sql`${interviews.turns} = ${JSON.stringify(expected)}::jsonb`,
+      ),
+    )
+    .returning({ id: interviews.id })
+  return rows.length > 0
+}
+
+/** Stores one browser session's anti-cheat counts; other sessions of the interview are kept. */
+export async function saveIntegritySession(userId: string, id: string, sessionId: string, session: IntegritySession) {
+  await db
+    .update(interviews)
+    .set({
+      integrity: sql`jsonb_set(coalesce(${interviews.integrity}, '{"sessions":{}}'::jsonb), ${`{sessions,${sessionId}}`}::text[], ${JSON.stringify(session)}::jsonb, true)`,
+    })
     .where(and(eq(interviews.id, id), eq(interviews.userId, userId)))
 }
 

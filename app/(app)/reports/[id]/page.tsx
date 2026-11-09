@@ -3,10 +3,12 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
+import { IntegrityCard } from "@/components/report/integrity-card"
 import { ScoreRing, scoreTone } from "@/components/report/score-ring"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { summarizeIntegrity } from "@/lib/integrity"
 import { getInterview } from "@/lib/interviews"
 import { requireUser } from "@/lib/session"
 import { cn } from "@/lib/utils"
@@ -46,6 +48,7 @@ async function Report({ params }: { params: Promise<{ id: string }> }) {
   if (interview.status !== "completed" || !interview.report) redirect(`/interview/${id}`)
 
   const report = interview.report
+  const integrity = summarizeIntegrity(interview.integrity)
   const minutes = interview.completedAt
     ? Math.max(1, Math.round((interview.completedAt.getTime() - interview.startedAt.getTime()) / 60_000))
     : null
@@ -106,6 +109,9 @@ async function Report({ params }: { params: Promise<{ id: string }> }) {
           </div>
         </div>
       </section>
+
+      {/* anti-cheat (interviews from before the camera checks have no data) */}
+      {integrity && <IntegrityCard summary={integrity} mode={interview.mode} />}
 
       {/* strengths / improvements */}
       <div className="grid gap-4 md:grid-cols-2">

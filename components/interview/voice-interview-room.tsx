@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { InterviewType } from "@/lib/db/schema"
 import { cn } from "@/lib/utils"
+import { preloadProctor, ProctorCam, ProctorNotice, useProctor } from "./proctor"
 
 type Props = {
   id: string
@@ -77,8 +78,13 @@ export function VoiceInterviewRoom(props: Props) {
   const endedByUser = useRef(false)
   const closingHeard = useRef(false)
   const transcriptEnd = useRef<HTMLDivElement>(null)
+  const proctor = useProctor({ interviewId: props.id, mode: "voice" })
+  const stopProctor = proctor.stop
 
   const allAnswered = progress.answered >= progress.total
+
+  // Download the face-check models while the candidate reads the tips.
+  useEffect(() => preloadProctor(), [])
 
   const refreshProgress = useCallback(async () => {
     try {
@@ -94,6 +100,7 @@ export function VoiceInterviewRoom(props: Props) {
 
   const finish = useCallback(async () => {
     setStatus("scoring")
+    await stopProctor() // camera off, anti-cheat counts saved before the report is built
     try {
       const res = await fetch(`/api/interviews/${props.id}/finish`, { method: "POST" })
       const data = await res.json().catch(() => ({}))
@@ -108,7 +115,7 @@ export function VoiceInterviewRoom(props: Props) {
       setError(e instanceof Error ? e.message : "Couldn't create the report. Try again.")
       setStatus("dropped")
     }
-  }, [props.id, router])
+  }, [props.id, router, stopProctor])
 
   // Call timer
   useEffect(() => {
@@ -218,6 +225,10 @@ export function VoiceInterviewRoom(props: Props) {
     }
 
     setStatus("connecting")
+    // Wake up the voice agent endpoint now, so the first answer doesn't wait for a cold start.
+    void fetch(`/api/vapi/llm/${props.id}/chat/completions`).catch(() => {})
+    // Anti-cheat camera (resolves once the camera is allowed or refused; the call starts either way).
+    await proctor.start()
     try {
       const vapi = await getVapi()
       // The SDK requires an assistant argument; our server ignores this placeholder and
@@ -255,13 +266,13 @@ export function VoiceInterviewRoom(props: Props) {
   const live = status === "live"
   const statusText =
     status === "connecting"
-      ? "Connecting the call"
+      ? "Connecting… allow the microphone if your browser asks"
       : status === "live"
         ? assistantSpeaking
-          ? "Interviewer is speaking"
+          ? "Interviewer is speaking — listen"
           : muted
-            ? "Your mic is muted"
-            : "Listening"
+            ? "Your mic is muted — unmute to answer"
+            : "Your turn — answer out loud"
         : status === "dropped"
           ? "Call ended"
           : "Ready when you are"
@@ -322,6 +333,7 @@ export function VoiceInterviewRoom(props: Props) {
         className="relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] px-6 py-10 text-center text-white ring-1 ring-white/10 sm:px-12"
       >
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_70%_at_50%_0%,rgb(99_102_241/0.4),transparent_70%)]" />
+        <ProctorCam proctor={proctor} className="absolute top-3 right-3" />
         <VoiceOrb
           className={cn("mx-auto size-28 transition-opacity", !live && "opacity-70")}
           speaking={assistantSpeaking || status === "connecting"}
@@ -334,6 +346,10 @@ export function VoiceInterviewRoom(props: Props) {
         <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl" data-testid="interview-question">
           {progress.currentQuestion}
         </p>
+        <ProctorNotice proctor={proctor} className="mt-4" />
+        {live && !assistantSpeaking && !muted && !proctor.warning && (
+          <p className="mt-4 text-xs text-white/55">When you finish your answer, pause for a second and the interviewer will reply.</p>
+        )}
 
         {(status === "idle" || status === "dropped") && (
           <div className="mt-8 flex flex-col items-center gap-3">
@@ -347,8 +363,21 @@ export function VoiceInterviewRoom(props: Props) {
                 {status === "dropped" || progress.answered > 0 ? "Reconnect and continue" : "Start voice interview"}
               </Button>
             )}
-            <p className="max-w-sm text-xs text-white/55">
-              Talk naturally, like a real call. The interviewer listens, then asks follow-ups based on what you said.
+            <ol className="mt-2 grid max-w-xl gap-2 text-left text-xs text-white/70 sm:grid-cols-3">
+              {[
+                "Press the button and allow your microphone and camera.",
+                "Answer out loud, like a phone call. Pause for a second when you are done.",
+                "After the last question it ends by itself and shows your report.",
+              ].map((tip, i) => (
+                <li key={tip} className="flex gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="font-semibold text-indigo-300">{i + 1}</span>
+                  {tip}
+                </li>
+              ))}
+            </ol>
+            <p className="max-w-xl text-xs text-white/55">
+              Anti-cheat: your camera checks that you stay in view, look at the screen and don’t use a phone or other
+              tabs. Video never leaves your device; only the counts are saved in your report.
             </p>
           </div>
         )}

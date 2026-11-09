@@ -1,7 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import type { InterviewReport, InterviewTurn, InterviewType, Profile, ResumeInsights } from "@/lib/db/schema"
-import { generateStructured } from "./model"
+import { generateStructured, streamSpoken } from "./model"
 
 /* ── Resume analysis ────────────────────────────────────────── */
 
@@ -80,21 +80,20 @@ const INTERVIEWER_SYSTEM =
   "detail in a short clause first (never generic praise like 'great answer'), then ask the next question. " +
   "Keep each turn under 60 words."
 
-export async function nextQuestion(input: {
+type QuestionInput = {
   type: InterviewType
   targetRole: string
   profile: Profile | null
   firstName: string
   turns: InterviewTurn[]
   totalQuestions: number
-}) {
+}
+
+function questionPrompt(input: QuestionInput) {
   const number = input.turns.length + 1
   const isFirst = number === 1
   const isLast = number === input.totalQuestions
-  const { question } = await generateStructured({
-    kind: "fast",
-    schema: z.object({ question: z.string().describe("What the interviewer says next, spoken style.") }),
-    temperature: 0.8,
+  return {
     system: `${INTERVIEWER_SYSTEM}\n\n${ROUND_GUIDE[input.type]}`,
     prompt:
       `${candidateContext(input.profile, input.targetRole)}\n\n` +
@@ -103,8 +102,26 @@ export async function nextQuestion(input: {
         : `Conversation so far:\n${transcript(input.turns)}\n\nAsk question ${number} of ${input.totalQuestions}.` +
           (isLast ? " This is the final question." : "") +
           " Build on what they said when it helps; otherwise move to a new area. Don't repeat earlier questions."),
+  }
+}
+
+export async function nextQuestion(input: QuestionInput) {
+  const { question } = await generateStructured({
+    kind: "fast",
+    schema: z.object({ question: z.string().describe("What the interviewer says next, spoken style.") }),
+    temperature: 0.8,
+    ...questionPrompt(input),
   })
   return question.trim()
+}
+
+/** Same as nextQuestion, streamed as plain text for the voice call (the voice starts on the first words). */
+export async function* streamNextQuestion(input: QuestionInput) {
+  const { system, prompt } = questionPrompt(input)
+  for await (const text of streamSpoken({ system: `${system}\nReply with only the words to say.`, prompt, temperature: 0.8 })) {
+    // Read aloud, so drop markdown symbols the model sometimes adds.
+    yield text.replace(/[*#_`]/g, "")
+  }
 }
 
 /* ── Report ─────────────────────────────────────────────────── */

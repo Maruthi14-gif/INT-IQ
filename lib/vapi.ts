@@ -31,20 +31,30 @@ export function isVoiceConfigured() {
 }
 
 function signingSecret() {
-  const secret = process.env.VAPI_LLM_SECRET ?? process.env.NEON_AUTH_COOKIE_SECRET
+  const secret = process.env.VAPI_LLM_SECRET || process.env.NEON_AUTH_COOKIE_SECRET
   if (!secret) throw new Error("Set VAPI_LLM_SECRET (or NEON_AUTH_COOKIE_SECRET) to sign voice-agent requests.")
   return secret
 }
 
-/** Per-interview token Vapi sends back to our custom LLM endpoint. */
-export function voiceAgentToken(interviewId: string) {
-  return createHmac("sha256", signingSecret()).update(`vapi-llm:${interviewId}`).digest("base64url")
+/** Vapi hangs up after this long. The agent token expires 15 minutes later. */
+const MAX_CALL_SECONDS = 20 * 60
+
+function sign(interviewId: string, exp: number) {
+  return createHmac("sha256", signingSecret()).update(`vapi-llm:${interviewId}:${exp}`).digest("base64url")
+}
+
+/** Per-interview token Vapi sends back to our custom LLM endpoint: `<exp unix seconds>.<hmac>`. */
+export function voiceAgentToken(interviewId: string, exp: number) {
+  return `${exp}.${sign(interviewId, exp)}`
 }
 
 export function verifyVoiceAgentToken(interviewId: string, token: string | null) {
-  if (!token) return false
-  const expected = Buffer.from(voiceAgentToken(interviewId))
-  const given = Buffer.from(token)
+  const match = /^([1-9]\d{0,11})\.([A-Za-z0-9_-]{43})$/.exec(token ?? "")
+  if (!match) return false
+  const exp = Number(match[1])
+  if (exp * 1000 < Date.now()) return false
+  const expected = Buffer.from(sign(interviewId, exp))
+  const given = Buffer.from(match[2])
   return expected.length === given.length && timingSafeEqual(expected, given)
 }
 
@@ -57,6 +67,8 @@ export function voiceAgentBaseUrl(requestUrl: string) {
 }
 
 export function buildVoiceAssistant(input: { interviewId: string; firstMessage: string; baseUrl: string }) {
+  const language = process.env.VAPI_TRANSCRIBER_LANGUAGE ?? "en"
+  const exp = Math.floor(Date.now() / 1000) + MAX_CALL_SECONDS + 15 * 60
   return {
     name: "INT-IQ Interviewer",
     firstMessage: input.firstMessage,
@@ -66,22 +78,28 @@ export function buildVoiceAssistant(input: { interviewId: string; firstMessage: 
       // Vapi appends /chat/completions.
       url: `${input.baseUrl}/api/vapi/llm/${input.interviewId}`,
       model: "int-iq-gemini-interviewer",
-      headers: { "x-intiq-voice-token": voiceAgentToken(input.interviewId) },
+      headers: { "x-intiq-voice-token": voiceAgentToken(input.interviewId, exp) },
       timeoutSeconds: 25,
       messages: [{ role: "system", content: "You are the INT-IQ mock interviewer." }],
     },
     voice: {
       provider: process.env.VAPI_VOICE_PROVIDER ?? "vapi",
       voiceId: process.env.VAPI_VOICE_ID ?? "Clara",
+      // Speak short chunks right away, so "Got it." plays while the question is still being written.
+      chunkPlan: { enabled: true, minCharacters: 4 },
     },
-    transcriber: { provider: "deepgram", model: "nova-3", language: process.env.VAPI_TRANSCRIBER_LANGUAGE ?? "en" },
-    // Candidates pause to think: wait a little longer before treating silence as "done".
+    transcriber: { provider: "deepgram", model: "nova-3", language },
     startSpeakingPlan: {
-      waitSeconds: 0.8,
-      transcriptionEndpointingPlan: { onPunctuationSeconds: 1.2, onNoPunctuationSeconds: 2.5, onNumberSeconds: 1 },
+      waitSeconds: 0.4,
+      // A model judges whether the sentence sounds finished: quick reply after a complete answer,
+      // patient during "so, um..." thinking pauses. English only.
+      ...(language.startsWith("en") && {
+        smartEndpointingPlan: { provider: "livekit", waitFunction: "70 + 600 * sqrt(x) + 3000 * x^3" },
+      }),
+      transcriptionEndpointingPlan: { onPunctuationSeconds: 0.6, onNoPunctuationSeconds: 1.6, onNumberSeconds: 0.8 },
     },
     endCallPhrases: [END_CALL_PHRASE],
-    maxDurationSeconds: 30 * 60,
+    maxDurationSeconds: MAX_CALL_SECONDS,
     metadata: { interviewId: input.interviewId, app: "int-iq" },
   }
 }

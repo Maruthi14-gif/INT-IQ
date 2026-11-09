@@ -93,7 +93,9 @@ export function InterviewSetup({
       </div>
 
       <fieldset>
-        <legend className="mb-3 text-sm font-medium">Interview mode</legend>
+        <legend className="mb-3 flex items-center gap-2 text-sm font-medium">
+          <StepNumber n={1} /> How do you want to answer?
+        </legend>
         <div className="grid gap-3 sm:grid-cols-2">
           {MODES.map(({ mode: m, title, body, icon: Icon }) => {
             const unavailable = m === "voice" && !voiceAvailable
@@ -120,6 +122,9 @@ export function InterviewSetup({
                 <span>
                   <span className="block font-medium">
                     {title}
+                    {m === "voice" && voiceAvailable && (
+                      <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-text">Recommended</span>
+                    )}
                     {unavailable && <span className="ml-2 text-xs font-normal text-muted-foreground">Not set up yet</span>}
                   </span>
                   <span className="mt-1 block text-sm text-muted-foreground">{body}</span>
@@ -131,7 +136,9 @@ export function InterviewSetup({
       </fieldset>
 
       <fieldset>
-        <legend className="mb-3 text-sm font-medium">Choose a round</legend>
+        <legend className="mb-3 flex items-center gap-2 text-sm font-medium">
+          <StepNumber n={2} /> Which round do you want to practice?
+        </legend>
         <div className="grid gap-3 md:grid-cols-3">
           {ROUNDS.map(({ type: t, title, body, icon: Icon }) => (
             <button
@@ -160,7 +167,9 @@ export function InterviewSetup({
       </fieldset>
 
       <fieldset>
-        <legend className="mb-3 text-sm font-medium">Length</legend>
+        <legend className="mb-3 flex items-center gap-2 text-sm font-medium">
+          <StepNumber n={3} /> How long?
+        </legend>
         <div className="grid gap-3 sm:grid-cols-3">
           {LENGTHS.map((l) => (
             <button
@@ -186,17 +195,34 @@ export function InterviewSetup({
         </p>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="space-y-4 rounded-2xl border bg-card p-5">
+        <p className="text-sm" data-testid="interview-summary">
+          <span className="text-muted-foreground">You&rsquo;ll do a </span>
+          <span className="font-medium">
+            {total}-question {ROUNDS.find((r) => r.type === type)?.title} interview
+          </span>
+          <span className="text-muted-foreground"> by </span>
+          <span className="font-medium">{mode === "voice" ? "voice call" : "text & mic"}</span>
+          <span className="text-muted-foreground"> · about {LENGTHS.find((l) => l.value === total)?.hint.split("~")[1]}.</span>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {mode === "voice"
+            ? "Next: press Start in the interview room and allow your microphone and camera. The interviewer greets you, then you answer out loud like a phone call. Headphones help."
+            : "Next: allow your camera, then the interviewer reads each question. Tap Start speaking and answer out loud, or type, then press Send. Works best in Chrome or Edge."}
+        </p>
         <Button onClick={start} disabled={starting} className="h-12 px-6 text-[15px]">
           {starting ? <Loader2Icon className="animate-spin" /> : <MicIcon />}
           {starting ? "Preparing your interviewer…" : "Start interview"}
         </Button>
-        <p className="text-sm text-muted-foreground">
-          {mode === "voice"
-            ? "Find a quiet spot, use headphones if you can, and allow the microphone."
-            : "Answer out loud (Chrome or Edge) or type. Find a quiet spot and allow the microphone."}
-        </p>
       </div>
     </div>
+  )
+}
+
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand-text">
+      {n}
+    </span>
   )
 }
