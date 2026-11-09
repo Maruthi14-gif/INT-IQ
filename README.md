@@ -69,18 +69,21 @@ Two modes share the same interviewer, storage and reports:
   database. Gemini still creates the final report. A public tunnel or Vercel switches voice follow-ups back to the
   Gemini custom-LLM endpoint.
 - Dropped calls keep every saved answer: reconnect, or switch the same interview to text mode (`?mode=text`).
-- Speed: the agent says a short "Got it." as soon as the candidate stops, then streams the question as Gemini
-  writes it (thinking set to minimal; a second model takes over if the first is slow). LiveKit smart endpointing
-  replies quickly after a finished sentence and waits during thinking pauses.
+- Speed: Gemini streams the interviewer's response as it writes it (thinking set to minimal; a second model takes
+  over if the first is slow). LiveKit smart endpointing replies quickly after a finished sentence and waits during
+  thinking pauses. The interviewer does not auto-accept answers: vague, off-topic, unsupported or contradictory
+  responses receive a concise evidence-seeking probe before it moves on.
 
 ## Anti-cheat (integrity checks)
 
 - Text mode turns on MediaPipe integrity checks (`components/interview/proctor.tsx`) for face presence, another person,
   looking away, a phone, leaving the window and paste attempts. Only counts are saved and shown in the report.
 - Voice mode includes an on-device visual coach. It first calibrates to the candidate, then MediaPipe analyzes
-  persistent framing, head/eye direction, eye-closure, lighting, posture, movement, face-presence and multiple-person
-  issues. The call also measures speaking pace, likely filler words and long pauses from the transcript. Short coaching
-  cues can be spoken during the call, and the metrics appear in the report without changing the AI content score.
+  persistent framing, iris and head direction (including looking up/down), eye-closure, phone visibility, hands
+  covering the face, cropped/obscured faces, image clarity, lighting, posture, movement, face-presence and
+  multiple-person issues. The call also measures speaking pace, likely filler words and long pauses from the
+  transcript. Short coaching cues can be spoken during the call, and the metrics appear in the report without
+  changing the AI content score.
   Raw camera frames are not uploaded or stored by INT-IQ in either mode.
 - Local dev works with `VAPI_ASSISTANT_ID`. To use Gemini for the live voice follow-ups too, expose the app with a
   tunnel and set `VAPI_LLM_BASE_URL`.

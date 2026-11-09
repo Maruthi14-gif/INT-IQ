@@ -5,6 +5,7 @@ import type {
   FaceLandmarkerResult,
   Matrix,
   NormalizedLandmark,
+  ObjectDetector,
   PoseLandmarker,
   PoseLandmarkerResult,
 } from "@mediapipe/tasks-vision"
@@ -37,8 +38,10 @@ type VisualCueCode =
   | "no_person"
   | "multiple_people"
   | "face_obscured"
+  | "face_cropped"
   | "eyes_closed"
-  | "vertical_gaze"
+  | "looking_down"
+  | "looking_up"
   | "side_gaze"
   | "head_tilt"
   | "off_center"
@@ -46,6 +49,9 @@ type VisualCueCode =
   | "too_far"
   | "low_light"
   | "glare"
+  | "camera_unclear"
+  | "phone_visible"
+  | "hand_near_face"
   | "leaning"
   | "excessive_movement"
 
@@ -62,6 +68,7 @@ type ConditionState = {
 type VisionModels = {
   face: FaceLandmarker
   pose: PoseLandmarker
+  phone: ObjectDetector | null
 }
 
 type Calibration = {
@@ -72,7 +79,14 @@ type Calibration = {
   roll: number
   centerX: number
   centerY: number
+  irisX: number
+  irisY: number
+  eyeDown: number
+  eyeUp: number
+  eyeSide: number
 }
+
+type FrameQuality = { brightness: number; contrast: number; sharpness: number }
 
 type CameraMetrics = {
   analyzedMs: number
@@ -87,6 +101,8 @@ const FACE_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
 const POSE_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+const OBJECT_MODEL_URL =
+  "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite"
 const ANALYSIS_INTERVAL_MS = 250
 const GLOBAL_REMINDER_COOLDOWN_MS = 25_000
 const MAX_REMINDERS_PER_ISSUE = 2
@@ -95,10 +111,13 @@ const PRE_CALIBRATION_CODES = new Set<VisualCueCode>([
   "no_person",
   "multiple_people",
   "face_obscured",
+  "face_cropped",
   "too_close",
   "too_far",
   "low_light",
   "glare",
+  "camera_unclear",
+  "phone_visible",
 ])
 
 const RULES: Record<VisualCueCode, { durationMs: number; label: string; message: string }> = {
@@ -117,15 +136,25 @@ const RULES: Record<VisualCueCode, { durationMs: number; label: string; message:
     label: "Face is not clearly visible",
     message: "Please make sure your face is clearly visible to the camera.",
   },
+  face_cropped: {
+    durationMs: 4_000,
+    label: "Face is outside the frame",
+    message: "Please move fully into frame so your whole face is visible.",
+  },
   eyes_closed: {
     durationMs: 2_000,
     label: "Eyes appear closed",
     message: "Please keep your eyes open and stay engaged with the interview.",
   },
-  vertical_gaze: {
-    durationMs: 4_500,
-    label: "Looking up or down",
-    message: "Try to keep your face level and your attention near the camera.",
+  looking_down: {
+    durationMs: 3_000,
+    label: "Looking down",
+    message: "Please bring your attention back toward the camera instead of looking down.",
+  },
+  looking_up: {
+    durationMs: 3_500,
+    label: "Looking up",
+    message: "Please bring your attention back toward the camera instead of looking up.",
   },
   side_gaze: {
     durationMs: 5_000,
@@ -162,6 +191,21 @@ const RULES: Record<VisualCueCode, { durationMs: number; label: string; message:
     label: "Lighting is too bright",
     message: "There is strong glare on the camera. Try reducing the light behind or in front of you.",
   },
+  camera_unclear: {
+    durationMs: 7_000,
+    label: "Camera image is unclear",
+    message: "The camera image looks unclear. Please clean the lens or improve the lighting.",
+  },
+  phone_visible: {
+    durationMs: 2_000,
+    label: "Phone visible",
+    message: "Please put the phone away and focus on the interview.",
+  },
+  hand_near_face: {
+    durationMs: 7_000,
+    label: "Face is partly covered",
+    message: "Try not to cover your face with your hand while answering.",
+  },
   leaning: {
     durationMs: 6_000,
     label: "Posture is leaning",
@@ -179,7 +223,7 @@ let modelsPromise: Promise<VisionModels> | null = null
 async function loadVisionModels() {
   if (modelsPromise) return modelsPromise
   modelsPromise = (async () => {
-    const { FaceLandmarker, FilesetResolver, PoseLandmarker } = await import("@mediapipe/tasks-vision")
+    const { FaceLandmarker, FilesetResolver, ObjectDetector, PoseLandmarker } = await import("@mediapipe/tasks-vision")
     const fileset = await FilesetResolver.forVisionTasks(WASM_URL)
     const create = async (delegate: "GPU" | "CPU") => {
       const [face, pose] = await Promise.all([
@@ -203,7 +247,14 @@ async function loadVisionModels() {
           outputSegmentationMasks: false,
         }),
       ])
-      return { face, pose }
+      const phone = await ObjectDetector.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: OBJECT_MODEL_URL, delegate },
+        runningMode: "VIDEO",
+        scoreThreshold: 0.45,
+        maxResults: 3,
+        categoryAllowlist: ["cell phone"],
+      }).catch(() => null)
+      return { face, pose, phone }
     }
     try {
       return await create("GPU")
@@ -233,8 +284,10 @@ export const VisualCoach = forwardRef<VisualCoachHandle, Props>(function VisualC
   const lastReminderAt = useRef(0)
   const previousFaceCenter = useRef<{ x: number; y: number } | null>(null)
   const movementAverage = useRef(0)
-  const lastLightCheck = useRef(0)
-  const lastBrightness = useRef(128)
+  const lastQualityCheck = useRef(0)
+  const lastQuality = useRef<FrameQuality>({ brightness: 128, contrast: 64, sharpness: 16 })
+  const lastPhoneCheck = useRef(0)
+  const phoneVisible = useRef(false)
   const calibration = useRef<Calibration>(emptyCalibration())
   const metrics = useRef<CameraMetrics>(emptyMetrics())
   const [status, setStatus] = useState<CoachStatus>("off")
@@ -354,12 +407,17 @@ export const VisualCoach = forwardRef<VisualCoachHandle, Props>(function VisualC
       try {
         const face = models.face.detectForVideo(video, now)
         const pose = models.pose.detectForVideo(video, now)
-        const brightness = measureBrightness(video, canvasRef.current, now, lastLightCheck, lastBrightness)
-        const calibrated = updateCalibration(face, brightness, calibration.current)
+        const quality = measureFrameQuality(video, canvasRef.current, now, lastQualityCheck, lastQuality)
+        if (models.phone && now - lastPhoneCheck.current >= 1_000) {
+          phoneVisible.current = models.phone.detectForVideo(video, now).detections.length > 0
+          lastPhoneCheck.current = now
+        }
+        const calibrated = updateCalibration(face, quality.brightness, calibration.current)
         const conditions = detectConditions(
           face,
           pose,
-          brightness,
+          quality,
+          phoneVisible.current,
           previousFaceCenter,
           movementAverage,
           calibration.current,
@@ -462,29 +520,46 @@ export const VisualCoach = forwardRef<VisualCoachHandle, Props>(function VisualC
   )
 })
 
-function measureBrightness(
+function measureFrameQuality(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement | null,
   now: number,
   lastCheck: { current: number },
-  lastValue: { current: number },
+  lastValue: { current: FrameQuality },
 ) {
   if (!canvas || now - lastCheck.current < 1_000) return lastValue.current
   const context = canvas.getContext("2d", { willReadFrequently: true })
   if (!context) return lastValue.current
   context.drawImage(video, 0, 0, canvas.width, canvas.height)
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+  const gray: number[] = []
   let total = 0
-  for (let i = 0; i < pixels.length; i += 4) total += 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]
+  for (let i = 0; i < pixels.length; i += 4) {
+    const value = 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]
+    gray.push(value)
+    total += value
+  }
+  const brightness = total / gray.length
+  const contrast = Math.sqrt(gray.reduce((sum, value) => sum + (value - brightness) ** 2, 0) / gray.length)
+  let edges = 0
+  let comparisons = 0
+  for (let y = 1; y < canvas.height; y++) {
+    for (let x = 1; x < canvas.width; x++) {
+      const i = y * canvas.width + x
+      edges += Math.abs(gray[i] - gray[i - 1]) + Math.abs(gray[i] - gray[i - canvas.width])
+      comparisons += 2
+    }
+  }
   lastCheck.current = now
-  lastValue.current = total / (pixels.length / 4)
+  lastValue.current = { brightness, contrast, sharpness: comparisons ? edges / comparisons : 0 }
   return lastValue.current
 }
 
 function detectConditions(
   face: FaceLandmarkerResult,
   pose: PoseLandmarkerResult,
-  brightness: number,
+  quality: FrameQuality,
+  phoneVisible: boolean,
   previousCenter: { current: { x: number; y: number } | null },
   movementAverage: { current: number },
   calibration: Calibration,
@@ -499,15 +574,17 @@ function detectConditions(
   const blendshapes = new Map(
     (face.faceBlendshapes[0]?.categories ?? []).map((category) => [category.categoryName, category.score]),
   )
+  const gaze = gazeSignals(primaryFace, blendshapes)
   const eyesClosed = (blendshapes.get("eyeBlinkLeft") ?? 0) > 0.65 && (blendshapes.get("eyeBlinkRight") ?? 0) > 0.65
-  const eyesLookingSide = Math.max(
-    ((blendshapes.get("eyeLookOutLeft") ?? 0) + (blendshapes.get("eyeLookInRight") ?? 0)) / 2,
-    ((blendshapes.get("eyeLookInLeft") ?? 0) + (blendshapes.get("eyeLookOutRight") ?? 0)) / 2,
-  ) > 0.52
-  const eyesLookingVertical = Math.max(
-    ((blendshapes.get("eyeLookUpLeft") ?? 0) + (blendshapes.get("eyeLookUpRight") ?? 0)) / 2,
-    ((blendshapes.get("eyeLookDownLeft") ?? 0) + (blendshapes.get("eyeLookDownRight") ?? 0)) / 2,
-  ) > 0.52
+  const pitchDelta = rotation ? rotation.pitch - calibration.pitch : 0
+  const yawDelta = rotation ? rotation.yaw - calibration.yaw : 0
+  const irisXDelta = gaze.irisX - calibration.irisX
+  const irisYDelta = gaze.irisY - calibration.irisY
+  const lookingDown =
+    gaze.down > Math.max(0.22, calibration.eyeDown + 0.1) || irisYDelta > 0.09 || pitchDelta > 11
+  const lookingUp = gaze.up > Math.max(0.22, calibration.eyeUp + 0.1) || irisYDelta < -0.09 || pitchDelta < -11
+  const lookingSide =
+    gaze.side > Math.max(0.25, calibration.eyeSide + 0.11) || Math.abs(irisXDelta) > 0.11 || Math.abs(yawDelta) > 15
 
   if (box) {
     const movement = previousCenter.current
@@ -524,17 +601,17 @@ function detectConditions(
   return [
     { code: "no_person", active: personCount === 0 },
     { code: "multiple_people", active: personCount > 1 },
+    { code: "phone_visible", active: phoneVisible },
     { code: "face_obscured", active: faceCount === 0 && poseCount > 0 },
+    {
+      code: "face_cropped",
+      active: Boolean(box && (box.minX < 0.015 || box.maxX > 0.985 || box.minY < 0.015 || box.maxY > 0.985)),
+    },
     { code: "eyes_closed", active: Boolean(primaryFace && eyesClosed) },
-    {
-      code: "vertical_gaze",
-      active: Boolean(eyesLookingVertical || (rotation && Math.abs(rotation.pitch - calibration.pitch) > 18)),
-    },
-    {
-      code: "side_gaze",
-      active: Boolean(eyesLookingSide || (rotation && Math.abs(rotation.yaw - calibration.yaw) > 22)),
-    },
-    { code: "head_tilt", active: Boolean(rotation && Math.abs(rotation.roll - calibration.roll) > 15) },
+    { code: "looking_down", active: Boolean(primaryFace && lookingDown) },
+    { code: "looking_up", active: Boolean(primaryFace && lookingUp) },
+    { code: "side_gaze", active: Boolean(primaryFace && lookingSide) },
+    { code: "head_tilt", active: Boolean(rotation && Math.abs(rotation.roll - calibration.roll) > 12) },
     {
       code: "off_center",
       active: Boolean(
@@ -544,15 +621,33 @@ function detectConditions(
     },
     { code: "too_close", active: Boolean(box && (box.width > 0.58 || box.height > 0.78)) },
     { code: "too_far", active: Boolean(box && box.width < 0.17) },
-    { code: "low_light", active: brightness < 45 },
-    { code: "glare", active: brightness > 225 },
+    { code: "low_light", active: quality.brightness < 45 },
+    { code: "glare", active: quality.brightness > 225 },
+    {
+      code: "camera_unclear",
+      active: quality.brightness >= 45 && quality.brightness <= 225 && (quality.contrast < 12 || quality.sharpness < 3),
+    },
+    { code: "hand_near_face", active: Boolean(primaryPose && box && isHandNearFace(primaryPose, box)) },
     { code: "leaning", active: leaning },
     { code: "excessive_movement", active: movementAverage.current > 0.032 },
   ]
 }
 
 function emptyCalibration(): Calibration {
-  return { ready: false, samples: 0, pitch: 0, yaw: 0, roll: 0, centerX: 0.5, centerY: 0.5 }
+  return {
+    ready: false,
+    samples: 0,
+    pitch: 0,
+    yaw: 0,
+    roll: 0,
+    centerX: 0.5,
+    centerY: 0.5,
+    irisX: 0,
+    irisY: 0,
+    eyeDown: 0,
+    eyeUp: 0,
+    eyeSide: 0,
+  }
 }
 
 function emptyMetrics(): CameraMetrics {
@@ -564,6 +659,10 @@ function updateCalibration(face: FaceLandmarkerResult, brightness: number, state
   if (face.faceLandmarks.length !== 1 || brightness < 45 || brightness > 225) return false
   const box = landmarkBox(face.faceLandmarks[0])
   const rotation = face.facialTransformationMatrixes[0] ? matrixToEuler(face.facialTransformationMatrixes[0]) : null
+  const blendshapes = new Map(
+    (face.faceBlendshapes[0]?.categories ?? []).map((category) => [category.categoryName, category.score]),
+  )
+  const gaze = gazeSignals(face.faceLandmarks[0], blendshapes)
   if (!rotation || box.width < 0.17 || box.width > 0.58) return false
   state.samples += 1
   state.pitch += rotation.pitch
@@ -571,6 +670,11 @@ function updateCalibration(face: FaceLandmarkerResult, brightness: number, state
   state.roll += rotation.roll
   state.centerX += box.centerX
   state.centerY += box.centerY
+  state.irisX += gaze.irisX
+  state.irisY += gaze.irisY
+  state.eyeDown += gaze.down
+  state.eyeUp += gaze.up
+  state.eyeSide += gaze.side
   if (state.samples < CALIBRATION_SAMPLES) return false
   state.pitch /= state.samples
   state.yaw /= state.samples
@@ -578,6 +682,11 @@ function updateCalibration(face: FaceLandmarkerResult, brightness: number, state
   // center values start at 0.5 to keep the first sample from dominating a short baseline.
   state.centerX /= state.samples + 1
   state.centerY /= state.samples + 1
+  state.irisX /= state.samples
+  state.irisY /= state.samples
+  state.eyeDown /= state.samples
+  state.eyeUp /= state.samples
+  state.eyeSide /= state.samples
   state.ready = true
   return true
 }
@@ -609,6 +718,10 @@ function landmarkBox(landmarks: NormalizedLandmark[]) {
     maxY = Math.max(maxY, point.y)
   }
   return {
+    minX,
+    minY,
+    maxX,
+    maxY,
     width: maxX - minX,
     height: maxY - minY,
     centerX: (minX + maxX) / 2,
@@ -621,10 +734,68 @@ function matrixToEuler(matrix: Matrix) {
   if (matrix.rows < 3 || matrix.columns < 3 || value.length < 11) return null
   const degrees = 180 / Math.PI
   return {
-    pitch: Math.atan2(value[9], value[10]) * degrees,
-    yaw: Math.asin(Math.max(-1, Math.min(1, -value[8]))) * degrees,
-    roll: Math.atan2(value[4], value[0]) * degrees,
+    // MediaPipe's facial transform is column-major. These are r21/r22,
+    // -r20, and r10/r00 respectively. The old transposed indices made
+    // looking up/down almost invisible while sideways movement still worked.
+    pitch: Math.atan2(value[6], value[10]) * degrees,
+    yaw: Math.atan2(-value[2], Math.hypot(value[6], value[10])) * degrees,
+    roll: Math.atan2(value[1], value[0]) * degrees,
   }
+}
+
+function gazeSignals(landmarks: NormalizedLandmark[] | undefined, shapes: Map<string, number>) {
+  const left = ((shapes.get("eyeLookOutLeft") ?? 0) + (shapes.get("eyeLookInRight") ?? 0)) / 2
+  const right = ((shapes.get("eyeLookInLeft") ?? 0) + (shapes.get("eyeLookOutRight") ?? 0)) / 2
+  const down = ((shapes.get("eyeLookDownLeft") ?? 0) + (shapes.get("eyeLookDownRight") ?? 0)) / 2
+  const up = ((shapes.get("eyeLookUpLeft") ?? 0) + (shapes.get("eyeLookUpRight") ?? 0)) / 2
+  const iris = landmarks ? irisPosition(landmarks) : null
+  return { side: Math.max(left, right), down, up, irisX: iris?.x ?? 0.5, irisY: iris?.y ?? 0.5 }
+}
+
+function irisPosition(points: NormalizedLandmark[]) {
+  if (points.length < 474) return null
+  const ratios = [
+    eyeRatio(points[468], points[33], points[133], points[159], points[145]),
+    eyeRatio(points[473], points[362], points[263], points[386], points[374]),
+  ].filter((value): value is { x: number; y: number } => Boolean(value))
+  if (!ratios.length) return null
+  return {
+    x: ratios.reduce((sum, value) => sum + value.x, 0) / ratios.length,
+    y: ratios.reduce((sum, value) => sum + value.y, 0) / ratios.length,
+  }
+}
+
+function eyeRatio(
+  iris: NormalizedLandmark | undefined,
+  cornerA: NormalizedLandmark | undefined,
+  cornerB: NormalizedLandmark | undefined,
+  top: NormalizedLandmark | undefined,
+  bottom: NormalizedLandmark | undefined,
+) {
+  if (!iris || !cornerA || !cornerB || !top || !bottom) return null
+  const width = Math.abs(cornerB.x - cornerA.x)
+  const height = Math.abs(bottom.y - top.y)
+  if (width < 0.005 || height < 0.003) return null
+  return {
+    x: clamp((iris.x - Math.min(cornerA.x, cornerB.x)) / width, 0, 1),
+    y: clamp((iris.y - Math.min(top.y, bottom.y)) / height, 0, 1),
+  }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function isHandNearFace(landmarks: NormalizedLandmark[], box: ReturnType<typeof landmarkBox>) {
+  return [landmarks[15], landmarks[16]].some(
+    (wrist) =>
+      wrist &&
+      (wrist.visibility ?? 0) > 0.45 &&
+      wrist.x > box.minX - 0.06 &&
+      wrist.x < box.maxX + 0.06 &&
+      wrist.y > box.minY - 0.08 &&
+      wrist.y < box.maxY + 0.12,
+  )
 }
 
 function isLeaning(landmarks: NormalizedLandmark[]) {

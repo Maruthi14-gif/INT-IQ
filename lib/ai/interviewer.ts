@@ -34,14 +34,16 @@ export async function analyzeResume(input: { resumeText: string; targetRole: str
 
 const ROUND_GUIDE: Record<InterviewType, string> = {
   technical:
-    "Technical round: test fundamentals for the role, dig into the candidate's own projects and technical decisions, " +
-    "and include at least one small problem-solving or design question. Follow up when an answer is vague.",
+    "Technical round: test job-related fundamentals, the candidate's own projects, problem solving, debugging, design decisions, trade-offs, failure modes and validation. " +
+    "Do not accept a technology name as an explanation. Ask how it works, why it was chosen, what alternatives were rejected, or how the claim was measured. " +
+    "If reasoning is incorrect or contradictory, challenge the exact premise neutrally and let the candidate repair it.",
   behavioral:
     "Behavioral round: ask about real situations (teamwork, conflict, failure, ownership, deadlines, learning something fast). " +
-    "Push for specifics using the STAR shape (situation, task, action, result) without naming it.",
+    "Probe for the situation, the candidate's personal responsibility, specific actions, result, and lesson without naming a framework. " +
+    "Do not accept a hypothetical or a team-level 'we' answer when a real personal example was requested.",
   hr:
     "HR round: motivation, why this role and company type, strengths and weaknesses, career goals, handling pressure, " +
-    "and a fresher-friendly expectations question. Keep it warm and conversational.",
+    "and a fresher-friendly expectations question. Keep it warm, but probe generic claims for a concrete example and connect questions to the role.",
 }
 
 const LEVEL_GUIDE: Record<string, string> = {
@@ -74,11 +76,13 @@ function transcript(turns: InterviewTurn[]) {
 }
 
 const INTERVIEWER_SYSTEM =
-  "You are a friendly, sharp interviewer at a good tech company, interviewing a student by voice. " +
+  "You are a professional, evidence-seeking interviewer at a good tech company, interviewing a student by voice. Be calm and respectful, not harsh. " +
   "Your words are read aloud, so write the way people speak: short sentences, no lists, no markdown, no emojis, " +
-  "never number questions. Ask exactly one question at a time. When there is a previous answer, react to one specific " +
-  "detail in a short clause first (never generic praise like 'great answer'), then ask the next question. " +
-  "Keep each turn under 60 words."
+  "never number questions. Ask exactly one question at a time. Never automatically accept an answer and never use generic praise such as 'great answer'. " +
+  "First judge whether the latest answer actually addresses the question and contains enough evidence. If it is a refusal, one-word reply, off-topic, vague, contradictory, " +
+  "or only states a claim, stay on the same competency and ask a concise probe. If it is partial, probe the most important missing detail. If it is strong, briefly refer to one " +
+  "specific detail and move to the next planned competency. Do not reveal a score or teach the answer during the interview. Give a candidate who says 'I don't know' one chance " +
+  "to reason from first principles or describe how they would find out. Keep each turn under 65 words."
 
 type QuestionInput = {
   type: InterviewType
@@ -93,6 +97,8 @@ function questionPrompt(input: QuestionInput) {
   const number = input.turns.length + 1
   const isFirst = number === 1
   const isLast = number === input.totalQuestions
+  const latestAnswer = input.turns.at(-1)?.answer ?? ""
+  const diagnostics = latestAnswer ? answerDiagnostics(latestAnswer) : null
   return {
     system: `${INTERVIEWER_SYSTEM}\n\n${ROUND_GUIDE[input.type]}`,
     prompt:
@@ -101,11 +107,40 @@ function questionPrompt(input: QuestionInput) {
         ? `Start the interview. Greet ${input.firstName} by first name in one short sentence, mention the ${input.type} round for the ${input.targetRole} role, then ask the first question.`
         : `Conversation so far:\n${transcript(input.turns)}\n\nAsk question ${number} of ${input.totalQuestions}.` +
           (isLast ? " This is the final question." : "") +
-          " Build on what they said when it helps; otherwise move to a new area. Don't repeat earlier questions."),
+          ` Surface check of the latest answer: ${diagnostics}. This is only a hint; use the actual question and answer to judge relevance and depth. ` +
+          "Use a probe when evidence is missing; otherwise move to a new job-related competency. Don't repeat an earlier question verbatim."),
   }
 }
 
+function answerDiagnostics(answer: string) {
+  const words = answer.trim().split(/\s+/).filter(Boolean)
+  const normalized = answer.toLowerCase().replace(/[^a-z\s']/g, " ").replace(/\s+/g, " ").trim()
+  const refusal = /^(no|nope|yes|yeah|maybe|nothing|i don't know|i do not know|not sure|skip|pass|can't say|cannot say)\b/.test(normalized)
+  const evidenceWords = words.filter((word) => /\d|because|result|measured|implemented|designed|debugged|reduced|increased|learned/i.test(word)).length
+  return `${words.length} words; ${refusal ? "likely refusal or non-answer" : words.length < 8 ? "very short" : words.length < 20 ? "brief" : "substantive length"}; ${evidenceWords ? "contains possible evidence markers" : "no obvious evidence marker"}`
+}
+
+function requiredProbe(input: QuestionInput) {
+  const answer = input.turns.at(-1)?.answer?.trim()
+  if (!answer) return null
+  const normalized = answer.toLowerCase().replace(/[^a-z\s']/g, " ").replace(/\s+/g, " ").trim()
+  const words = normalized.split(/\s+/).filter(Boolean)
+  const obviousNonAnswer =
+    words.length <= 2 ||
+    /^(no|nope|yes|yeah|maybe|nothing|i don't know|i do not know|not sure|skip|pass|can't say|cannot say)(\s|$)/.test(normalized)
+  if (!obviousNonAnswer) return null
+  if (input.type === "technical") {
+    return "That doesn't give me enough to evaluate. Can you reason through the question step by step, even if you're unsure?"
+  }
+  if (input.type === "behavioral") {
+    return "I need a real example to evaluate that. Can you describe one situation, what you personally did, and what happened?"
+  }
+  return "I need a little more substance than that. Can you connect your answer to this role and support it with one specific example?"
+}
+
 export async function nextQuestion(input: QuestionInput) {
+  const probe = requiredProbe(input)
+  if (probe) return probe
   const { question } = await generateStructured({
     kind: "fast",
     schema: z.object({ question: z.string().describe("What the interviewer says next, spoken style.") }),
@@ -117,6 +152,11 @@ export async function nextQuestion(input: QuestionInput) {
 
 /** Same as nextQuestion, streamed as plain text for the voice call (the voice starts on the first words). */
 export async function* streamNextQuestion(input: QuestionInput) {
+  const probe = requiredProbe(input)
+  if (probe) {
+    yield probe
+    return
+  }
   const { system, prompt } = questionPrompt(input)
   for await (const text of streamSpoken({ system: `${system}\nReply with only the words to say.`, prompt, temperature: 0.8 })) {
     // Read aloud, so drop markdown symbols the model sometimes adds.
@@ -166,8 +206,10 @@ export async function buildReport(input: {
     schema: reportSchema,
     temperature: 0.3,
     system:
-      "You are an experienced interview coach. Grade a mock interview honestly and kindly. " +
-      "Score each answer on substance: missing, one-line or off-topic answers score 0-3; solid answers 6-8; excellent 9-10. " +
+      "You are an experienced hiring interviewer using consistent, job-related scoring anchors. Grade honestly and kindly, without rewarding confidence alone. " +
+      "Score each answer on relevance, correctness, evidence, personal contribution, reasoning and completeness: missing, one-line, evasive, incorrect or off-topic answers score 0-3; " +
+      "partly relevant but generic or unsupported answers score 4-5; solid, specific answers score 6-8; excellent, verified and reflective answers score 9-10. " +
+      "Do not give 70+ overall unless the transcript demonstrates readiness across most competencies. " +
       "Feedback must reference what the candidate actually said. Never invent things they said.",
     prompt:
       `Round: ${input.type}\n${candidateContext(input.profile, input.targetRole)}\n\n` +

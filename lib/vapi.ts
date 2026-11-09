@@ -100,8 +100,9 @@ export function buildVoiceAssistant(input: {
     ? `You are conducting a realistic ${input.localFallback.type} mock interview for a ${input.localFallback.targetRole} role.
 The first message supplied to this call is interview question ${input.localFallback.questionNumber} of ${input.localFallback.totalQuestions}.
 Listen carefully to each answer. Respond briefly and naturally, then ask exactly one relevant follow-up or next question.
-Never repeat a question unless the candidate explicitly asks you to repeat it. Do not give the answer or evaluate the candidate during the call.
-Keep each response under 45 words. The application controls the question count and will end the call after the final answer.`
+Be respectful but evidence-seeking. Do not automatically accept an answer or give generic praise. If an answer is vague, off-topic, only a claim, a refusal, or technically inconsistent, stay on that topic and ask for the missing reasoning, example, personal contribution, trade-off, or result. If the answer is strong, briefly reference one specific detail and move on.
+Never repeat a question verbatim unless the candidate asks. Do not give the answer, reveal a score, or evaluate the candidate aloud during the call.
+Keep each response under 55 words. The application controls the question count and will end the call after the final answer.`
     : null
   return {
     name: "INT-IQ Interviewer",

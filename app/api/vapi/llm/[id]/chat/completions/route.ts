@@ -10,8 +10,6 @@ import { isVisualCoachingMessage } from "@/lib/visual-coaching"
 
 export const maxDuration = 60
 
-/** Said the moment the candidate stops talking, while the next question is being written. */
-const ACKS = ["Okay.", "Got it.", "Alright.", "I see.", "Thanks."]
 const LOST = "Sorry, I lost my train of thought for a second. Could you tell me a little more about that?"
 
 /**
@@ -62,7 +60,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (heard.length >= interview.totalQuestions) return say(CLOSING_LINE)
 
   const out = speech(streaming)
-  out.send(`${ACKS[heard.length % ACKS.length]} `)
   const work = (async () => {
     let question = ""
     try {
