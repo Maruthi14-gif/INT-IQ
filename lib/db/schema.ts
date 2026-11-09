@@ -48,6 +48,10 @@ export type Profile = typeof profiles.$inferSelect
 export const INTERVIEW_TYPES = ["technical", "behavioral", "hr"] as const
 export type InterviewType = (typeof INTERVIEW_TYPES)[number]
 
+/** text: browser voice + typing (built in). voice: real-time voice call through Vapi. */
+export const INTERVIEW_MODES = ["text", "voice"] as const
+export type InterviewMode = (typeof INTERVIEW_MODES)[number]
+
 export type InterviewTurn = {
   question: string
   answer?: string
@@ -79,6 +83,7 @@ export const interviews = pgTable(
       .notNull()
       .references(() => authUsers.id, { onDelete: "cascade" }),
     type: text("type", { enum: INTERVIEW_TYPES }).notNull(),
+    mode: text("mode", { enum: INTERVIEW_MODES }).default("text").notNull(),
     targetRole: text("target_role").notNull(),
     totalQuestions: integer("total_questions").notNull(),
     status: text("status", { enum: ["in_progress", "completed"] }).default("in_progress").notNull(),

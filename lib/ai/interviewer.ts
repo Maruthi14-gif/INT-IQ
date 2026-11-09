@@ -17,6 +17,7 @@ const resumeSchema = z.object({
 
 export async function analyzeResume(input: { resumeText: string; targetRole: string; jobDescription?: string | null }) {
   return generateStructured({
+    kind: "smart",
     schema: resumeSchema,
     temperature: 0.2,
     system:
@@ -91,6 +92,7 @@ export async function nextQuestion(input: {
   const isFirst = number === 1
   const isLast = number === input.totalQuestions
   const { question } = await generateStructured({
+    kind: "fast",
     schema: z.object({ question: z.string().describe("What the interviewer says next, spoken style.") }),
     temperature: 0.8,
     system: `${INTERVIEWER_SYSTEM}\n\n${ROUND_GUIDE[input.type]}`,
@@ -143,6 +145,7 @@ export async function buildReport(input: {
   turns: InterviewTurn[]
 }): Promise<InterviewReport> {
   const report = await generateStructured({
+    kind: "smart",
     schema: reportSchema,
     temperature: 0.3,
     system:

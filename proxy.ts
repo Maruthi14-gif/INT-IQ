@@ -9,7 +9,8 @@ import { auth } from "@/lib/auth/server"
  */
 export default auth.middleware({
   loginUrl: "/sign-in",
-  publicRoutes: ["/"],
+  // /api/vapi/llm is called by Vapi's servers, not a browser: it checks its own signed token.
+  publicRoutes: ["/", "/api/vapi/llm"],
 })
 
 export const config = {

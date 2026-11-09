@@ -22,9 +22,9 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Practice",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboardIcon },
-      { title: "Mock interview", href: "/interview", icon: MicIcon, soon: true },
-      { title: "Resume", href: "/resume", icon: FileTextIcon, soon: true },
-      { title: "Reports", href: "/reports", icon: ChartLineIcon, soon: true },
+      { title: "Mock interview", href: "/interview", icon: MicIcon },
+      { title: "Resume", href: "/resume", icon: FileTextIcon },
+      { title: "Reports", href: "/reports", icon: ChartLineIcon },
     ],
   },
   {

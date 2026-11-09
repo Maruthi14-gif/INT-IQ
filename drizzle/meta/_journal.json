@@ -15,6 +15,13 @@
       "when": 1794218222852,
       "tag": "0001_interviews_and_resume",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794222394415,
+      "tag": "0002_interview_mode",
+      "breakpoints": true
     }
   ]
 }

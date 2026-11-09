@@ -13,7 +13,8 @@ Built by **TEAM DARKNIGHTS** · Live: https://int-iq.vercel.app
 | Fonts | Geist (UI), Geist Mono (code), Instrument Serif (display accents) |
 | Auth | Neon Auth (managed Better Auth): Google sign-in + email one-time code |
 | Database | Neon Postgres (Singapore), Drizzle ORM, node-postgres |
-| AI | Vercel AI SDK + Google Gemini |
+| AI | Vercel AI SDK + Google Gemini (questions, follow-ups, grading, reports) |
+| Voice | Vapi (real-time speech-to-text + text-to-speech), driven by the same Gemini interviewer |
 | Hosting | Vercel (functions in `sin1`, next to the database) |
 | Tests | Playwright (uses the installed Edge browser) |
 
@@ -35,6 +36,7 @@ npm run dev              # http://localhost:3000
 | `NEON_AUTH_BASE_URL` | Neon Auth URL for the branch |
 | `NEON_AUTH_COOKIE_SECRET` | 32+ random characters (`openssl rand -base64 32`) |
 | `GEMINI_API_KEY` | Free key from https://aistudio.google.com/apikey |
+| `VAPI_PUBLIC_KEY` | Vapi public key (dashboard.vapi.ai → API Keys), used server-side only. Allow your site origin; no assistant restriction. Enables voice-call interviews |
 
 On Vercel, set the same variables (except `DATABASE_URL_UNPOOLED`) for Production and Preview.
 
@@ -48,6 +50,18 @@ On Vercel, set the same variables (except `DATABASE_URL_UNPOOLED`) for Productio
   4. Save the keys into Neon Auth:
      `neon neon-auth oauth-provider update --provider-id google --oauth-client-id <ID> --oauth-client-secret <SECRET>`
 - Every site origin must be trusted: `neon neon-auth domain add https://your-domain`
+
+## Voice interviews (Vapi)
+
+Two modes share the same interviewer, storage and reports:
+
+- **Text & mic**: questions are read with the browser voice; answers are typed or dictated.
+- **Voice call**: a real-time Vapi call. Vapi does speech-to-text and text-to-speech; after each answer it calls
+  `/api/vapi/llm/[id]/chat/completions` (OpenAI format), which saves the answer and returns the next question from
+  the Gemini interviewer. The browser SDK starts calls through `/api/vapi/call/web`, so the Vapi key and the
+  assistant config never reach the browser (Vapi creates web calls with the public key + an allowed origin). Each interview's agent endpoint is protected by a signed token header.
+- Dropped calls keep every saved answer: reconnect, or switch the same interview to text mode (`?mode=text`).
+- Local dev: Vapi can't reach `localhost`. Expose the app with a tunnel and set `VAPI_LLM_BASE_URL`.
 
 ## Scripts
 

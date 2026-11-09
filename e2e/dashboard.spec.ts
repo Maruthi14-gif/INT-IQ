@@ -11,13 +11,13 @@ test.describe("Dashboard (signed in)", () => {
     await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
     await expect(page.getByTestId("profile-role").filter({ visible: true })).toHaveText("student")
     await expect(page.getByRole("heading", { name: "Start a practice interview" })).toBeVisible()
-    await expect(page.getByRole("button", { name: "Start interview" })).toBeDisabled()
+    await expect(page.getByRole("link", { name: "Start interview" })).toHaveAttribute("href", "/interview")
     await expect(page.getByRole("heading", { name: "Get set up" })).toBeVisible()
-    await expect(page.getByText("1 of 4")).toBeVisible()
+    await expect(page.getByText("1 of 4").filter({ visible: true })).toBeVisible()
     for (const stat of ["Interviews completed", "Average score", "Practice time"]) {
-      await expect(page.getByText(stat)).toBeVisible()
+      await expect(page.getByText(stat).filter({ visible: true })).toBeVisible()
     }
-    await expect(page.getByText("No interviews yet")).toBeVisible()
+    await expect(page.getByText("No interviews yet").filter({ visible: true })).toBeVisible()
     await expectNoHorizontalOverflow(page)
     expect(problems).toEqual([])
   })
@@ -36,7 +36,8 @@ test.describe("Dashboard (signed in)", () => {
     const sidebar = page.locator("[data-slot=sidebar]").first()
 
     await expect(page.getByRole("link", { name: "Dashboard" })).toHaveAttribute("data-active", "true")
-    const soon = page.getByRole("button", { name: "Mock interview" })
+    await expect(page.getByRole("link", { name: "Mock interview" })).toHaveAttribute("href", "/interview")
+    const soon = page.getByRole("button", { name: "CV tailor" })
     await expect(soon).toHaveAttribute("aria-disabled", "true")
 
     await expect(sidebar).toHaveAttribute("data-state", "expanded")
@@ -53,7 +54,7 @@ test.describe("Dashboard (signed in)", () => {
     const sheet = page.getByRole("dialog")
     await expect(sheet).toBeVisible()
     await expect(sheet.getByRole("link", { name: "Dashboard" })).toBeVisible()
-    await expect(sheet.getByRole("button", { name: "Mock interview" })).toBeVisible()
+    await expect(sheet.getByRole("link", { name: "Mock interview" })).toBeVisible()
     await page.keyboard.press("Escape")
     await expect(sheet).toBeHidden()
   })

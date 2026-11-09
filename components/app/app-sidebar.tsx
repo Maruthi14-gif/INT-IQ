@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import type { ReactNode } from "react"
+import { Suspense, type ReactNode } from "react"
 import { LogoMark } from "@/components/brand/logo"
 import { NAV_GROUPS } from "@/components/app/nav-items"
 import {
@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/sidebar"
 
 export function AppSidebar({ user }: { user: ReactNode }) {
-  const pathname = usePathname()
   const { isMobile } = useSidebar()
   // Tooltips only help on the collapsed desktop rail. On phones they add hidden layers
   // that swallow the first Escape press, so the sheet wouldn't close.
@@ -49,13 +48,34 @@ export function AppSidebar({ user }: { user: ReactNode }) {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* The current URL is request data: read it inside Suspense, show the menu without a highlight meanwhile. */}
+        <Suspense fallback={<NavGroups pathname={null} tip={tip} />}>
+          <NavGroupsWithPath tip={tip} />
+        </Suspense>
+      </SidebarContent>
+
+      <SidebarFooter>{user}</SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  )
+}
+
+type Tip = (label: string) => string | undefined
+
+function NavGroupsWithPath({ tip }: { tip: Tip }) {
+  return <NavGroups pathname={usePathname()} tip={tip} />
+}
+
+function NavGroups({ pathname, tip }: { pathname: string | null; tip: Tip }) {
+  return (
+    <>
         {NAV_GROUPS.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(item.href + "/")
+                  const active = pathname !== null && (pathname === item.href || pathname.startsWith(item.href + "/"))
                   return (
                     <SidebarMenuItem key={item.href}>
                       {item.soon ? (
@@ -83,10 +103,6 @@ export function AppSidebar({ user }: { user: ReactNode }) {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
-      </SidebarContent>
-
-      <SidebarFooter>{user}</SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    </>
   )
 }
