@@ -19,14 +19,16 @@ const RESEND_SECONDS = 30
 
 /** Only allow same-site relative redirects. */
 function safeNext(value: string | null) {
-  if (!value) return "/dashboard"
+  // A normal sign-in starts at workspace choice. An explicit same-site `next`
+  // (for example, a protected page the visitor opened) is still honored.
+  if (!value) return "/welcome"
   try {
     // Resolve against this origin: anything that lands elsewhere (like "/\t/evil.com") is refused.
     const url = new URL(value, window.location.origin)
-    if (url.origin !== window.location.origin || !url.pathname.startsWith("/")) return "/dashboard"
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/")) return "/welcome"
     return url.pathname + url.search + url.hash
   } catch {
-    return "/dashboard"
+    return "/welcome"
   }
 }
 

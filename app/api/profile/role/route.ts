@@ -7,16 +7,14 @@ import { homeFor } from "@/lib/session"
 
 const body = z.object({ role: z.enum(USER_ROLES) })
 
-/** First sign-in: the user says whether they're a student or a recruiter. One-time choice. */
+/** Select the active workspace after sign-in. A user can switch roles without a second account. */
 export async function POST(request: Request) {
   const user = await apiUser()
   if (!user) return jsonError(401, "Please sign in again.")
   const parsed = body.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError(400, "Pick student or recruiter.")
 
-  const profile = await getOrCreateProfile(user.id)
-  if (profile.roleChosen) return Response.json({ next: homeFor(profile.role) })
-
+  await getOrCreateProfile(user.id)
   await setRole(user.id, parsed.data.role)
   return Response.json({ next: homeFor(parsed.data.role) })
 }

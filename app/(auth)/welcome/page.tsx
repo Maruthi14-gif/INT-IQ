@@ -1,12 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { RoleChooser } from "@/components/auth/role-chooser"
 import { Logo } from "@/components/brand/logo"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getOrCreateProfile } from "@/lib/profiles"
-import { homeFor, requireUser } from "@/lib/session"
+import { requireUser } from "@/lib/session"
 
 export const metadata: Metadata = { title: "Welcome" }
 
@@ -28,6 +27,5 @@ export default function WelcomePage() {
 async function Chooser() {
   const user = await requireUser()
   const profile = await getOrCreateProfile(user.id)
-  if (profile.roleChosen) redirect(homeFor(profile.role))
-  return <RoleChooser firstName={user.name?.trim().split(/\s+/)[0] || null} />
+  return <RoleChooser firstName={user.name?.trim().split(/\s+/)[0] || null} initialRole={profile.role} />
 }

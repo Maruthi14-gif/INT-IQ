@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronsUpDownIcon, Loader2Icon, LogOutIcon, UserIcon } from "lucide-react"
+import { ChevronsUpDownIcon, Loader2Icon, LogOutIcon, Repeat2Icon, UserIcon } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -92,10 +93,11 @@ export function NavUser({ user, role }: NavUserProps) {
                 {role === "recruiter" ? "Recruiter account" : "Student account"}
               </DropdownMenuLabel>
             )}
-            <DropdownMenuItem disabled>
-              <UserIcon />
-              Profile
-              <span className="ml-auto text-xs text-muted-foreground">Soon</span>
+            <DropdownMenuItem asChild>
+              <Link href="/profile"><UserIcon />Profile</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/welcome"><Repeat2Icon />Switch workspace</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

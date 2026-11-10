@@ -24,10 +24,10 @@ const ROLES: { role: UserRole; title: string; body: string; icon: LucideIcon; po
   },
 ]
 
-/** One-time choice on first sign-in. Can't be changed from the UI afterwards. */
-export function RoleChooser({ firstName }: { firstName: string | null }) {
+/** Choose the workspace after sign-in; returning users can switch without creating a second account. */
+export function RoleChooser({ firstName, initialRole }: { firstName: string | null; initialRole: UserRole }) {
   const router = useRouter()
-  const [role, setRole] = useState<UserRole>("student")
+  const [role, setRole] = useState<UserRole>(initialRole)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,7 +53,7 @@ export function RoleChooser({ firstName }: { firstName: string | null }) {
     <div className="w-full max-w-2xl space-y-8">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">{firstName ? `Welcome, ${firstName}` : "Welcome to INT-IQ"}</h1>
-        <p className="text-muted-foreground">How will you use INT-IQ? This sets up your workspace.</p>
+        <p className="text-muted-foreground">How will you use INT-IQ today? You can change this workspace later from your profile.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Account type">

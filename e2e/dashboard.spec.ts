@@ -68,7 +68,7 @@ test.describe("Dashboard (signed in)", () => {
     await page.getByRole("button", { name: new RegExp(user.email.replace(/[.+]/g, "\\$&")) }).click()
     const menu = page.getByRole("menu")
     await expect(menu.getByText(user.email)).toBeVisible()
-    await expect(menu.getByRole("menuitem", { name: /Profile/ })).toHaveAttribute("data-disabled", "")
+    await expect(menu.getByRole("menuitem", { name: "Profile" })).toHaveAttribute("href", "/profile")
     await expect(menu.getByRole("menuitem", { name: "Sign out" })).toBeVisible()
     await page.keyboard.press("Escape")
     await expect(menu).toBeHidden()
