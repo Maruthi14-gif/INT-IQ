@@ -1,13 +1,16 @@
 import {
+  BriefcaseIcon,
   CalendarCheckIcon,
   ChartLineIcon,
   FileTextIcon,
   LayoutDashboardIcon,
   MicIcon,
+  SearchIcon,
   TargetIcon,
   WandSparklesIcon,
   type LucideIcon,
 } from "lucide-react"
+import type { UserRole } from "@/lib/db/schema"
 
 export type NavItem = {
   title: string
@@ -17,7 +20,9 @@ export type NavItem = {
   soon?: boolean
 }
 
-export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+export type NavGroup = { label: string; items: NavItem[] }
+
+const STUDENT_NAV: NavGroup[] = [
   {
     label: "Practice",
     items: [
@@ -25,6 +30,13 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "Mock interview", href: "/interview", icon: MicIcon },
       { title: "Resume", href: "/resume", icon: FileTextIcon },
       { title: "Reports", href: "/reports", icon: ChartLineIcon },
+    ],
+  },
+  {
+    label: "Jobs",
+    items: [
+      { title: "Find jobs", href: "/jobs", icon: SearchIcon },
+      { title: "My applications", href: "/applications", icon: BriefcaseIcon },
     ],
   },
   {
@@ -37,11 +49,31 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   },
 ]
 
+const RECRUITER_NAV: NavGroup[] = [
+  {
+    label: "Hiring",
+    items: [
+      { title: "Dashboard", href: "/recruiter", icon: LayoutDashboardIcon },
+      { title: "Jobs", href: "/recruiter/jobs", icon: BriefcaseIcon },
+    ],
+  },
+]
+
+export function navFor(role: UserRole): NavGroup[] {
+  return role === "recruiter" ? RECRUITER_NAV : STUDENT_NAV
+}
+
+/** Kept for existing imports. */
+export const NAV_GROUPS = STUDENT_NAV
+
 export function titleForPath(pathname: string) {
-  for (const group of NAV_GROUPS) {
+  // Longest matching href wins, so /recruiter/jobs shows "Jobs", not "Dashboard".
+  let best: NavItem | null = null
+  for (const group of [...STUDENT_NAV, ...RECRUITER_NAV]) {
     for (const item of group.items) {
-      if (pathname === item.href || pathname.startsWith(item.href + "/")) return item.title
+      const match = pathname === item.href || pathname.startsWith(item.href + "/")
+      if (match && (!best || item.href.length > best.href.length)) best = item
     }
   }
-  return ""
+  return best?.title ?? ""
 }

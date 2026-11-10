@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { connection } from "next/server"
 import { cache } from "react"
 import { auth } from "@/lib/auth/server"
+import type { UserRole } from "@/lib/db/schema"
+import { getOrCreateProfile } from "@/lib/profiles"
 
 /**
  * Data access layer for the signed-in user.
@@ -24,3 +26,17 @@ export async function requireUser() {
   if (!session) redirect("/sign-in")
   return session.user
 }
+
+/**
+ * Signed-in user plus their profile. Users who haven't chosen a role yet are sent
+ * to /welcome; a student on a recruiter page (or the reverse) is sent to their own home.
+ */
+export async function requireRole(role: UserRole) {
+  const user = await requireUser()
+  const profile = await getOrCreateProfile(user.id)
+  if (!profile.roleChosen) redirect("/welcome")
+  if (profile.role !== role) redirect(profile.role === "recruiter" ? "/recruiter" : "/dashboard")
+  return { user, profile }
+}
+
+export const homeFor = (role: UserRole) => (role === "recruiter" ? "/recruiter" : "/dashboard")

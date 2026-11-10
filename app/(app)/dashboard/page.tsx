@@ -1,4 +1,4 @@
-import { ArrowRightIcon, CheckIcon, ClockIcon, FileTextIcon, GaugeIcon, MicIcon, PlayIcon, TrophyIcon, type LucideIcon } from "lucide-react"
+import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, CheckIcon, ClockIcon, FileTextIcon, GaugeIcon, MicIcon, PlayIcon, TrophyIcon, type LucideIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { listInterviews, practiceMinutes, type InterviewSummary } from "@/lib/interviews"
-import { getOrCreateProfile } from "@/lib/profiles"
-import { requireUser } from "@/lib/session"
+import { listPendingInvitations } from "@/lib/recruiting"
+import { requireRole } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
@@ -34,8 +34,9 @@ type NextStep =
   | { kind: "practice"; last: InterviewSummary }
 
 async function Dashboard() {
-  const user = await requireUser()
-  const [profile, interviews] = await Promise.all([getOrCreateProfile(user.id), listInterviews(user.id, 20)])
+  // Recruiters and first-time users are redirected to their own pages here.
+  const { user, profile } = await requireRole("student")
+  const [interviews, invites] = await Promise.all([listInterviews(user.id, 20), listPendingInvitations(user.id)])
   const firstName = user.name?.trim().split(/\s+/)[0] || user.email.split("@")[0]
   const completed = interviews.filter((i) => i.status === "completed")
   const unfinished = interviews.find((i) => i.status === "in_progress")
@@ -73,6 +74,44 @@ async function Dashboard() {
           {profile.targetRole ? `Preparing for ${profile.targetRole}.` : "Let’s get you interview-ready."}
         </p>
       </div>
+
+      {/* Recruiter invitations come first: they count. */}
+      {invites.length > 0 && (
+        <section className="overflow-hidden rounded-2xl border border-brand/30 bg-card" aria-labelledby="invites-title">
+          <div className="flex items-center justify-between border-b px-6 py-4">
+            <h2 id="invites-title" className="flex items-center gap-2 font-medium">
+              <BriefcaseIcon className="size-4 text-brand-text" /> Interview invitations
+            </h2>
+            <Link href="/applications" className="text-sm font-medium text-brand-text hover:opacity-80">
+              My applications
+            </Link>
+          </div>
+          <ul className="divide-y">
+            {invites.map((inv) => (
+              <li key={inv.id} className="flex flex-wrap items-center gap-4 px-6 py-4">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
+                  {inv.kind === "ai" ? <MicIcon className="size-4" /> : <CalendarIcon className="size-4" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">
+                    {inv.jobTitle} <span className="font-normal text-muted-foreground">· {inv.company}</span>
+                  </span>
+                  <span className="block text-sm text-muted-foreground">
+                    {inv.kind === "ai"
+                      ? inv.status === "accepted"
+                        ? "AI interview in progress"
+                        : "The recruiter invited you to an AI interview"
+                      : `Live interview ${inv.scheduledAt?.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) ?? ""}`}
+                  </span>
+                </span>
+                <Button asChild className="h-9">
+                  <Link href={`/invitations/${inv.id}`}>{inv.kind === "ai" ? (inv.status === "accepted" ? "Continue" : "Start") : "Details"}</Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <NextStepCard next={next} className="lg:col-span-2" />

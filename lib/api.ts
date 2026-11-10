@@ -1,5 +1,7 @@
 import "server-only"
 import { AiNotConfiguredError } from "@/lib/ai/model"
+import type { UserRole } from "@/lib/db/schema"
+import { getOrCreateProfile } from "@/lib/profiles"
 import { getSession } from "@/lib/session"
 
 export function jsonError(status: number, error: string) {
@@ -10,6 +12,15 @@ export function jsonError(status: number, error: string) {
 export async function apiUser() {
   const session = await getSession()
   return session?.user ?? null
+}
+
+/** The signed-in user if they have the given role, else null. Routes return 401/403 themselves. */
+export async function apiUserWithRole(role: UserRole) {
+  const user = await apiUser()
+  if (!user) return { user: null, error: jsonError(401, "Please sign in again.") }
+  const profile = await getOrCreateProfile(user.id)
+  if (profile.role !== role) return { user: null, error: jsonError(403, "You don't have access to this.") }
+  return { user, profile, error: null }
 }
 
 export function firstName(user: { name?: string | null; email: string }) {

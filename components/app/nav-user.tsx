@@ -17,8 +17,9 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/c
 import { Skeleton } from "@/components/ui/skeleton"
 import { authClient } from "@/lib/auth/client"
 import { runAuth } from "@/lib/auth/errors"
+import type { UserRole } from "@/lib/db/schema"
 
-type NavUserProps = { user: { name: string; email: string; image?: string | null } }
+type NavUserProps = { user: { name: string; email: string; image?: string | null }; role?: UserRole }
 
 function displayName(user: NavUserProps["user"]) {
   return user.name?.trim() || user.email.split("@")[0]
@@ -40,7 +41,7 @@ function UserAvatar({ user }: NavUserProps) {
   )
 }
 
-export function NavUser({ user }: NavUserProps) {
+export function NavUser({ user, role }: NavUserProps) {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const [signingOut, setSigningOut] = useState(false)
@@ -86,6 +87,11 @@ export function NavUser({ user }: NavUserProps) {
               </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {role && (
+              <DropdownMenuLabel className="px-2 py-1.5 text-xs font-normal text-muted-foreground">
+                {role === "recruiter" ? "Recruiter account" : "Student account"}
+              </DropdownMenuLabel>
+            )}
             <DropdownMenuItem disabled>
               <UserIcon />
               Profile

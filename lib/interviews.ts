@@ -5,6 +5,7 @@ import { withRetry } from "@/lib/db/retry"
 import { authUsers } from "@/lib/db/neon-auth"
 import {
   interviews,
+  invitations,
   type Interview,
   type InterviewMode,
   type InterviewReport,
@@ -17,7 +18,15 @@ import type { IntegritySession } from "@/lib/integrity"
 
 export async function createInterview(
   userId: string,
-  data: { type: InterviewType; mode: InterviewMode; targetRole: string; totalQuestions: number; firstQuestion: string },
+  data: {
+    type: InterviewType
+    mode: InterviewMode
+    targetRole: string
+    totalQuestions: number
+    firstQuestion: string
+    /** Set when a recruiter invited the candidate for a job application. */
+    applicationId?: string | null
+  },
 ) {
   const [row] = await db
     .insert(interviews)
@@ -28,6 +37,7 @@ export async function createInterview(
       targetRole: data.targetRole,
       totalQuestions: data.totalQuestions,
       turns: [{ question: data.firstQuestion }],
+      applicationId: data.applicationId ?? null,
     })
     .returning()
   return row
@@ -100,10 +110,13 @@ export async function saveIntegritySession(userId: string, id: string, sessionId
 }
 
 export async function completeInterview(userId: string, id: string, turns: InterviewTurn[], report: InterviewReport) {
-  await db
+  const [row] = await db
     .update(interviews)
     .set({ turns, report, overallScore: report.overallScore, status: "completed", completedAt: new Date() })
     .where(and(eq(interviews.id, id), eq(interviews.userId, userId)))
+    .returning({ applicationId: interviews.applicationId })
+  // An invited interview: tell the recruiter's side it's done.
+  if (row?.applicationId) await db.update(invitations).set({ status: "completed" }).where(eq(invitations.interviewId, id))
 }
 
 export async function listInterviews(userId: string, limit = 50) {

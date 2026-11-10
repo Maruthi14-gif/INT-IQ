@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { InterviewSetup } from "@/components/interview/interview-setup"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getOrCreateProfile } from "@/lib/profiles"
-import { requireUser } from "@/lib/session"
+import { requireRole } from "@/lib/session"
 import { isVoiceConfigured } from "@/lib/vapi"
 
 export const metadata: Metadata = { title: "Mock interview" }
@@ -23,8 +22,7 @@ export default function InterviewPage() {
 }
 
 async function SetupLoader() {
-  const user = await requireUser()
-  const profile = await getOrCreateProfile(user.id)
+  const { profile } = await requireRole("student")
   return (
     <InterviewSetup
       targetRole={profile.targetRole}

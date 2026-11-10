@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { ResumeForm } from "@/components/resume/resume-form"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getOrCreateProfile } from "@/lib/profiles"
-import { requireUser } from "@/lib/session"
+import { requireRole } from "@/lib/session"
 
 export const metadata: Metadata = { title: "Resume" }
 
@@ -22,8 +21,7 @@ export default function ResumePage() {
 }
 
 async function ResumeLoader() {
-  const user = await requireUser()
-  const p = await getOrCreateProfile(user.id)
+  const { profile: p } = await requireRole("student")
   return (
     <ResumeForm
       initial={{

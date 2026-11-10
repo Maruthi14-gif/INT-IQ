@@ -6,7 +6,7 @@ import { InterviewList } from "@/components/report/interview-list"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { listInterviews } from "@/lib/interviews"
-import { requireUser } from "@/lib/session"
+import { requireRole } from "@/lib/session"
 
 export const metadata: Metadata = { title: "Reports" }
 
@@ -25,7 +25,7 @@ export default function ReportsPage() {
 }
 
 async function Reports() {
-  const user = await requireUser()
+  const { user } = await requireRole("student")
   const items = await listInterviews(user.id)
   if (items.length === 0) {
     return (

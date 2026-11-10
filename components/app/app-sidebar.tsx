@@ -4,7 +4,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Suspense, type ReactNode } from "react"
 import { LogoMark } from "@/components/brand/logo"
-import { NAV_GROUPS } from "@/components/app/nav-items"
+import { navFor, type NavGroup } from "@/components/app/nav-items"
+import type { UserRole } from "@/lib/db/schema"
 import {
   Sidebar,
   SidebarContent,
@@ -21,8 +22,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-export function AppSidebar({ user }: { user: ReactNode }) {
+export function AppSidebar({ user, role = "student" }: { user: ReactNode; role?: UserRole }) {
   const { isMobile } = useSidebar()
+  const nav = navFor(role)
+  const recruiter = role === "recruiter"
+  const home = recruiter ? "/recruiter" : "/dashboard"
+  const subtitle = recruiter ? "Hiring" : "Interview practice"
   // Tooltips only help on the collapsed desktop rail. On phones they add hidden layers
   // that swallow the first Escape press, so the sheet wouldn't close.
   const tip = (label: string) => (isMobile ? undefined : label)
@@ -33,13 +38,13 @@ export function AppSidebar({ user }: { user: ReactNode }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg" tooltip={tip("INT-IQ")}>
-              <Link href="/dashboard">
+              <Link href={home}>
                 <LogoMark className="size-8 rounded-[10px]" />
                 <span className="grid leading-tight">
                   <span className="text-[15px] font-semibold tracking-tight">
                     INT<span className="text-brand-text">-</span>IQ
                   </span>
-                  <span className="text-xs text-muted-foreground">Interview practice</span>
+                  <span className="text-xs text-muted-foreground">{subtitle}</span>
                 </span>
               </Link>
             </SidebarMenuButton>
@@ -49,8 +54,8 @@ export function AppSidebar({ user }: { user: ReactNode }) {
 
       <SidebarContent>
         {/* The current URL is request data: read it inside Suspense, show the menu without a highlight meanwhile. */}
-        <Suspense fallback={<NavGroups pathname={null} tip={tip} />}>
-          <NavGroupsWithPath tip={tip} />
+        <Suspense fallback={<NavGroups groups={nav} pathname={null} tip={tip} />}>
+          <NavGroupsWithPath groups={nav} tip={tip} />
         </Suspense>
       </SidebarContent>
 
@@ -62,20 +67,20 @@ export function AppSidebar({ user }: { user: ReactNode }) {
 
 type Tip = (label: string) => string | undefined
 
-function NavGroupsWithPath({ tip }: { tip: Tip }) {
-  return <NavGroups pathname={usePathname()} tip={tip} />
+function NavGroupsWithPath({ groups, tip }: { groups: NavGroup[]; tip: Tip }) {
+  return <NavGroups groups={groups} pathname={usePathname()} tip={tip} />
 }
 
-function NavGroups({ pathname, tip }: { pathname: string | null; tip: Tip }) {
+function NavGroups({ groups, pathname, tip }: { groups: NavGroup[]; pathname: string | null; tip: Tip }) {
   return (
     <>
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
-                  const active = pathname !== null && (pathname === item.href || pathname.startsWith(item.href + "/"))
+                  const active = pathname !== null && (pathname === item.href || (pathname.startsWith(item.href + "/") && !group.items.some((o) => o !== item && pathname.startsWith(o.href))))
                   return (
                     <SidebarMenuItem key={item.href}>
                       {item.soon ? (

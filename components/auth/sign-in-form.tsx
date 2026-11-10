@@ -19,8 +19,15 @@ const RESEND_SECONDS = 30
 
 /** Only allow same-site relative redirects. */
 function safeNext(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return "/dashboard"
-  return value
+  if (!value) return "/dashboard"
+  try {
+    // Resolve against this origin: anything that lands elsewhere (like "/\t/evil.com") is refused.
+    const url = new URL(value, window.location.origin)
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/")) return "/dashboard"
+    return url.pathname + url.search + url.hash
+  } catch {
+    return "/dashboard"
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Suspense } from "react"
-import { AppSidebar } from "@/components/app/app-sidebar"
 import { NavUserSkeleton } from "@/components/app/nav-user"
+import { RoleSidebar, RoleSidebarFallback } from "@/components/app/role-sidebar"
 import { SidebarUser } from "@/components/app/sidebar-user"
 import { TopbarTitle } from "@/components/app/topbar-title"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -8,15 +8,17 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = (
+    <Suspense fallback={<NavUserSkeleton />}>
+      <SidebarUser />
+    </Suspense>
+  )
   return (
     <SidebarProvider>
-      <AppSidebar
-        user={
-          <Suspense fallback={<NavUserSkeleton />}>
-            <SidebarUser />
-          </Suspense>
-        }
-      />
+      {/* The menu depends on the user's role (request data), so it streams in. */}
+      <Suspense fallback={<RoleSidebarFallback user={user} />}>
+        <RoleSidebar user={user} />
+      </Suspense>
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 rounded-t-xl border-b bg-background/80 px-4 backdrop-blur-xl">
           <SidebarTrigger className="-ml-1" />
