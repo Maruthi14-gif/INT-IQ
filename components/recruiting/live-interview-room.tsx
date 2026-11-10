@@ -79,6 +79,7 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
   const [connection, setConnection] = useState<"preparing" | "waiting" | "connected" | "error" | "ended">("preparing")
   const [microphone, setMicrophone] = useState(true)
   const [camera, setCamera] = useState(true)
+  const [cameraAvailable, setCameraAvailable] = useState(true)
   const [notes, setNotes] = useState(initial.recruiterNotes ?? "")
   const [notesSaved, setNotesSaved] = useState(initial.recruiterNotes ?? "")
   const [copilotBusy, setCopilotBusy] = useState<"plan" | "suggestions" | "evaluation-draft" | null>(null)
@@ -185,11 +186,23 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
     let disposed = false
     async function start() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+        let stream: MediaStream
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+        } catch (error) {
+          if (!(error instanceof Error) || error.name !== "NotFoundError") throw error
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+          setCamera(false)
+          setCameraAvailable(false)
+          toast.info("No camera found. Continuing with audio only.")
+        }
         if (disposed) {
           stream.getTracks().forEach((track) => track.stop())
           return
         }
+        const hasVideo = stream.getVideoTracks().length > 0
+        setCameraAvailable(hasVideo)
+        setCamera(hasVideo)
         media.current = stream
         setLocalStream(stream)
         const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] })
@@ -216,7 +229,7 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
         await sync()
       } catch (error) {
         setConnection("error")
-        toast.error(message(error, "Camera and microphone couldn't start. Check browser permissions."))
+        toast.error(message(error, "Couldn't access a microphone. Connect or enable one, allow browser access, and refresh the room."))
       }
     }
     void start()
@@ -412,7 +425,7 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
       <div className={cn("grid gap-5", initial.role === "recruiter" ? "xl:grid-cols-[minmax(0,1fr)_360px]" : "max-w-5xl")}> 
         <section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-5">
           <div className="grid gap-4 md:grid-cols-2">
-            <VideoPanel videoRef={remoteVideo} label={initial.role === "recruiter" ? room.candidateName : "Recruiter"} remote connected={Boolean(remoteStream)} />
+            <VideoPanel videoRef={remoteVideo} label={initial.role === "recruiter" ? room.candidateName : "Recruiter"} remote connected={Boolean(remoteStream)} cameraOn={Boolean(remoteStream?.getVideoTracks().length)} />
             <VideoPanel videoRef={localVideo} label="You" muted connected={Boolean(localStream)} cameraOn={camera} />
           </div>
 
@@ -420,7 +433,7 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
             <Button type="button" size="icon" variant={microphone ? "outline" : "destructive"} onClick={toggleMicrophone} aria-label={microphone ? "Mute microphone" : "Unmute microphone"}>
               {microphone ? <MicIcon /> : <MicOffIcon />}
             </Button>
-            <Button type="button" size="icon" variant={camera ? "outline" : "destructive"} onClick={toggleCamera} aria-label={camera ? "Turn camera off" : "Turn camera on"}>
+            <Button type="button" size="icon" variant={camera ? "outline" : "destructive"} onClick={toggleCamera} disabled={!cameraAvailable} aria-label={cameraAvailable ? (camera ? "Turn camera off" : "Turn camera on") : "Camera unavailable"}>
               {camera ? <VideoIcon /> : <VideoOffIcon />}
             </Button>
             <Button type="button" variant="destructive" onClick={endInterview} className="gap-2">
@@ -442,7 +455,7 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
 
           {connection === "error" && (
             <p role="alert" className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              <CircleAlertIcon className="mt-0.5 size-4 shrink-0" /> Allow camera and microphone access, then refresh this room. If your network blocks direct WebRTC, use a network that permits video calls.
+              <CircleAlertIcon className="mt-0.5 size-4 shrink-0" /> Connect or enable a microphone, allow browser access, then refresh this room. If your network blocks direct WebRTC, use a network that permits calls.
             </p>
           )}
         </section>
@@ -475,7 +488,12 @@ function VideoPanel({ videoRef, label, muted = false, connected, cameraOn = true
   return (
     <div className="relative aspect-video overflow-hidden rounded-xl bg-zinc-950">
       <video ref={videoRef} autoPlay playsInline muted={muted} className={cn("size-full object-cover", muted && "-scale-x-100", !connected && "hidden")} />
-      {(!connected || (!cameraOn && !remote)) && <span className="absolute inset-0 grid place-items-center text-zinc-400"><VideoOffIcon className="size-8" /></span>}
+      {(!connected || !cameraOn) && (
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-zinc-400">
+          <VideoOffIcon className="size-8" />
+          {connected && <span className="text-xs">{remote ? "Audio only" : "Camera off"}</span>}
+        </span>
+      )}
       <span className="absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-white">{label}</span>
     </div>
   )
