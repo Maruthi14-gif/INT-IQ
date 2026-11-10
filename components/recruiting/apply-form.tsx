@@ -35,22 +35,17 @@ export function ApplyForm({ jobId, hasResume }: { jobId: string; hasResume: bool
     }
   }
 
-  if (!hasResume) {
-    return (
-      <div className="space-y-3 rounded-2xl border bg-card p-6">
-        <h2 className="font-medium">Apply for this job</h2>
-        <p className="text-sm text-muted-foreground">Recruiters see your resume and target role, so add them first. It takes about a minute.</p>
-        <Button asChild className="h-10 px-4">
-          <Link href="/resume">Add my resume</Link>
-        </Button>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4 rounded-2xl border bg-card p-6">
       <h2 className="font-medium">Apply for this job</h2>
-      <p className="text-sm text-muted-foreground">The recruiter gets your resume, target role and the note below.</p>
+      <p className="text-sm text-muted-foreground">The recruiter gets your profile and the note below.</p>
+      {!hasResume && (
+        <div className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm">
+          <p className="font-medium">Apply now, then strengthen your profile</p>
+          <p className="mt-1 text-muted-foreground">You can apply without a resume. Adding one helps the recruiter understand your experience.</p>
+          <Link href="/resume" className="mt-2 inline-block text-sm font-medium text-brand-text hover:opacity-80">Add a resume</Link>
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="note">A short note (optional)</Label>
         <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why you're a good fit, in a few lines." className="min-h-24" maxLength={1500} />
