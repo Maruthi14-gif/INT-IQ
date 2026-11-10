@@ -4,6 +4,7 @@ import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { StartInvitedInterview } from "@/components/recruiting/start-invited-interview"
+import { JoinLiveInterviewButton } from "@/components/recruiting/join-live-interview"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMyInvitation } from "@/lib/recruiting"
@@ -64,11 +65,12 @@ async function Invitation({ params }: Props) {
             {invitation.scheduledAt?.toLocaleString("en-IN", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" })}
           </p>
           <p className="text-sm text-muted-foreground">
-            This is a conversation with a person from {job.company}. The joining details are in the recruiter&rsquo;s message above. Warm up with a mock interview first if you like.
+            This is a private camera-and-microphone conversation with a person from {job.company}. Open the room when it&rsquo;s time to join. Warm up with a mock interview first if you like.
           </p>
-          <Button asChild variant="outline" className="h-10 px-4">
-            <Link href="/interview">Practice first</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <JoinLiveInterviewButton invitationId={invitation.id} />
+            <Button asChild variant="outline" className="h-10 px-4"><Link href="/interview">Practice first</Link></Button>
+          </div>
         </section>
       ) : (
         <section className="space-y-5 rounded-2xl border bg-card p-6">

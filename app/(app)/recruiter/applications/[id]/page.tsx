@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { scoreTone } from "@/components/report/score-ring"
 import { InviteForm, RecruiterNotes, StatusActions } from "@/components/recruiting/applicant-actions"
+import { JoinLiveInterviewButton } from "@/components/recruiting/join-live-interview"
 import { ApplicationStatusBadge, InvitationStatusBadge, LEVEL_LABEL } from "@/components/recruiting/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,7 +40,7 @@ async function Applicant({ params }: Props) {
   const { user } = await requireRole("recruiter")
   const data = await getApplicationForRecruiter(user.id, id)
   if (!data) notFound()
-  const { application, job, candidate, profile, invitations, interviews } = data
+  const { application, job, candidate, profile, invitations, interviews, liveSessions } = data
   const name = candidate.name?.trim() || candidate.email
   const insights = profile?.resumeInsights
 
@@ -111,7 +112,10 @@ async function Applicant({ params }: Props) {
                           {row}
                         </Link>
                       ) : (
-                        <div className="flex items-center gap-4 px-6 py-4">{row}</div>
+                        <div className="flex items-center gap-4 px-6 py-4">
+                          {row}
+                          {inv.kind === "live" && <JoinLiveInterviewButton invitationId={inv.id} label="Open room" compact />}
+                        </div>
                       )}
                     </li>
                   )
@@ -119,6 +123,30 @@ async function Applicant({ params }: Props) {
               </ul>
             )}
           </section>
+
+          {liveSessions.some((session) => session.finalEvaluation) && (
+            <section className="space-y-4 rounded-2xl border bg-card p-6" aria-labelledby="live-evaluations-title">
+              <div>
+                <h2 id="live-evaluations-title" className="font-medium">Live interview evaluations</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Recruiter-approved evidence from human interviews. These notes do not change the application status.</p>
+              </div>
+              {liveSessions.map((session) => {
+                const evaluation = session.finalEvaluation
+                if (!evaluation) return null
+                return (
+                  <article key={session.invitationId} className="space-y-3 rounded-xl border p-4 text-sm">
+                    <p className="font-medium">{evaluation.summary}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div><h3 className="text-xs font-medium text-muted-foreground uppercase">Strengths</h3><ul className="mt-1.5 space-y-1">{evaluation.strengths.map((item) => <li key={item}>• {item}</li>)}</ul></div>
+                      <div><h3 className="text-xs font-medium text-muted-foreground uppercase">Areas to probe</h3><ul className="mt-1.5 space-y-1">{evaluation.weaknesses.map((item) => <li key={item}>• {item}</li>)}</ul></div>
+                    </div>
+                    <div><h3 className="text-xs font-medium text-muted-foreground uppercase">Evidence</h3><ul className="mt-1.5 space-y-1 text-muted-foreground">{evaluation.evidence.map((item) => <li key={item}>• {item}</li>)}</ul></div>
+                    <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{evaluation.recommendation}</p>
+                  </article>
+                )
+              })}
+            </section>
+          )}
 
           {/* profile */}
           <section className="rounded-2xl border bg-card p-6" aria-labelledby="profile-title">

@@ -165,12 +165,14 @@ export function InviteForm({ applicationId, candidateName }: { applicationId: st
           <p className="text-sm text-muted-foreground">
             The candidate does an INT-IQ interview for this job. You get the full report: scores, every answer and the integrity check.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* Stacked, not side by side: the invite panel is narrow and "Behavioral" needs the width. */}
+          <div className="grid gap-3">
             <div className="space-y-1.5">
               <Label>Round</Label>
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* Pills at their natural width, wrapping if needed: "Behavioral" never fits a third of this narrow panel. */}
+              <div className="flex flex-wrap gap-1.5">
                 {ROUNDS.map((r) => (
-                  <button key={r.type} type="button" aria-pressed={type === r.type} onClick={() => setType(r.type)} className={cn("rounded-lg border px-2 py-2 text-sm", type === r.type ? "border-brand bg-brand-soft font-medium" : "hover:bg-accent")}>
+                  <button key={r.type} type="button" aria-pressed={type === r.type} onClick={() => setType(r.type)} className={cn("rounded-lg border px-3 py-2 text-sm whitespace-nowrap", type === r.type ? "border-brand bg-brand-soft font-medium" : "hover:bg-accent")}>
                     {r.label}
                   </button>
                 ))}
@@ -191,7 +193,7 @@ export function InviteForm({ applicationId, candidateName }: { applicationId: st
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Schedule a human-to-human interview. The candidate sees the time and your message. The video room is coming soon; for now, add your meeting link in the message.
+            Schedule a private human-to-human video interview. The candidate sees the time and can join their secure INT-IQ room; add any preparation details below.
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="when">Date and time</Label>

@@ -43,6 +43,13 @@
       "when": 1794257062552,
       "tag": "0005_role_chosen",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794281103447,
+      "tag": "0006_swift_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

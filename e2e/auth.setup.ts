@@ -21,6 +21,13 @@ setup("create a test account and sign in", async ({ page, baseURL }) => {
   expect(res.ok(), `sign-up failed: ${res.status()} ${await res.text()}`).toBeTruthy()
   const body = await res.json()
 
+  // New accounts must select a workspace before protected role-specific pages load.
+  const role = await page.request.post("/api/profile/role", {
+    data: { role: "student" },
+    headers: originHeader(baseURL),
+  })
+  expect(role.ok(), `role setup failed: ${role.status()} ${await role.text()}`).toBeTruthy()
+
   fs.mkdirSync(AUTH_DIR, { recursive: true })
   fs.writeFileSync(TEST_USER_FILE, JSON.stringify({ ...user, id: body.user.id }, null, 2))
 

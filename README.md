@@ -74,6 +74,13 @@ Two modes share the same interviewer, storage and reports:
   thinking pauses. The interviewer does not auto-accept answers: vague, off-topic, unsupported or contradictory
   responses receive a concise evidence-seeking probe before it moves on.
 
+## Live human interviews and Copilot
+
+- Recruiters can schedule a private live interview from an application; the candidate receives a database-backed invitation and both participants can open the same protected room.
+- The room uses browser WebRTC for real peer-to-peer camera and microphone media. The app server relays only authenticated SDP and ICE signaling messages; it never receives, records, or stores call audio or video.
+- Each participant must explicitly consent before their browser saves live speech-recognition text. When both do, the recruiter can use Gemini Copilot for evidence-based follow-ups, technical checks and unexplored topics.
+- Copilot prepares a structured plan from the resume and job, keeps private recruiter notes, drafts an evidence-based evaluation, and requires the recruiter to edit and explicitly approve it. It never changes an application status or makes hiring decisions.
+
 ## Anti-cheat (integrity checks)
 
 - Text mode turns on MediaPipe integrity checks (`components/interview/proctor.tsx`) for face presence, another person,

@@ -201,7 +201,7 @@ export type InvitationStatus = (typeof INVITATION_STATUSES)[number]
 /**
  * A recruiter inviting a candidate to interview for an application.
  * "ai": the candidate does an INT-IQ AI interview; the report goes to the recruiter.
- * "live": a scheduled human-to-human interview (room not built yet; details only).
+ * "live": a scheduled human-to-human interview with a private WebRTC room.
  */
 export const invitations = pgTable(
   "invitations",
@@ -230,3 +230,103 @@ export const invitations = pgTable(
 )
 
 export type Invitation = typeof invitations.$inferSelect
+
+/* ── Live interviews ────────────────────────────────────────────────────── */
+
+export const LIVE_INTERVIEW_STATUSES = ["scheduled", "waiting", "active", "completed", "cancelled"] as const
+export type LiveInterviewStatus = (typeof LIVE_INTERVIEW_STATUSES)[number]
+
+/** A consented text segment. Audio and video are never recorded by INT-IQ. */
+export type LiveTranscriptTurn = {
+  speaker: "recruiter" | "candidate"
+  text: string
+  createdAt: string
+}
+
+/** The recruiter-only preparation prepared by Gemini from the job and resume. */
+export type CopilotPlan = {
+  focusAreas: string[]
+  verificationSkills: string[]
+  projectQuestions: string[]
+  interviewPlan: { stage: string; aim: string; questions: string[] }[]
+}
+
+/** A recruiter can edit this draft before explicitly approving it. It never changes an application status. */
+export type LiveInterviewEvaluation = {
+  summary: string
+  strengths: string[]
+  weaknesses: string[]
+  evidence: string[]
+  recommendation: string
+  approvedAt: string
+}
+
+/**
+ * One private room per live invitation. Browser media connects directly with WebRTC;
+ * this table contains only room state, consented text, notes and the final evaluation.
+ */
+export const liveInterviewSessions = pgTable(
+  "live_interview_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invitationId: uuid("invitation_id")
+      .notNull()
+      .references(() => invitations.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    recruiterId: uuid("recruiter_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    status: text("status", { enum: LIVE_INTERVIEW_STATUSES }).default("scheduled").notNull(),
+    recruiterJoinedAt: timestamp("recruiter_joined_at", { withTimezone: true }),
+    candidateJoinedAt: timestamp("candidate_joined_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    /** Each participant must consent before their browser may save any transcription. */
+    recruiterTranscriptionConsentAt: timestamp("recruiter_transcription_consent_at", { withTimezone: true }),
+    candidateTranscriptionConsentAt: timestamp("candidate_transcription_consent_at", { withTimezone: true }),
+    transcript: jsonb("transcript").$type<LiveTranscriptTurn[]>().default([]).notNull(),
+    copilotPlan: jsonb("copilot_plan").$type<CopilotPlan>(),
+    recruiterNotes: text("recruiter_notes"),
+    finalEvaluation: jsonb("final_evaluation").$type<LiveInterviewEvaluation>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("live_interview_sessions_invitation_idx").on(t.invitationId),
+    index("live_interview_sessions_application_idx").on(t.applicationId),
+    index("live_interview_sessions_candidate_idx").on(t.candidateId),
+  ],
+)
+
+export type LiveInterviewSession = typeof liveInterviewSessions.$inferSelect
+
+export const LIVE_SIGNAL_KINDS = ["offer", "answer", "ice"] as const
+export type LiveSignalKind = (typeof LIVE_SIGNAL_KINDS)[number]
+
+/** Short-lived WebRTC offer/answer/ICE messages; no media is sent through this table. */
+export const liveInterviewSignals = pgTable(
+  "live_interview_signals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => liveInterviewSessions.id, { onDelete: "cascade" }),
+    senderId: uuid("sender_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: LIVE_SIGNAL_KINDS }).notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("live_interview_signals_session_idx").on(t.sessionId, t.createdAt)],
+)
+
+export type LiveInterviewSignal = typeof liveInterviewSignals.$inferSelect

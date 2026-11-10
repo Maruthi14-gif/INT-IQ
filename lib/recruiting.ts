@@ -8,6 +8,7 @@ import {
   interviews,
   invitations,
   jobs,
+  liveInterviewSessions,
   profiles,
   type ApplicationStatus,
   type ExperienceLevel,
@@ -88,7 +89,7 @@ export async function recruiterStats(recruiterId: string) {
         activeJobs: sql<number>`count(distinct ${jobs.id}) filter (where ${jobs.status} = 'open')`.mapWith(Number),
         applicants: sql<number>`count(distinct ${applications.id})`.mapWith(Number),
         pending: sql<number>`count(distinct ${applications.id}) filter (where ${applications.status} in ('applied', 'reviewing'))`.mapWith(Number),
-        scheduled: sql<number>`count(distinct ${invitations.id}) filter (where ${invitations.status} in ('pending', 'accepted'))`.mapWith(Number),
+        scheduled: sql<number>`count(distinct ${invitations.id}) filter (where ${invitations.kind} = 'live' and ${invitations.status} in ('pending', 'accepted'))`.mapWith(Number),
         completed: sql<number>`count(distinct ${invitations.id}) filter (where ${invitations.status} = 'completed')`.mapWith(Number),
       })
       .from(jobs)
@@ -160,7 +161,11 @@ export async function getApplicationForRecruiter(recruiterId: string, applicatio
       .where(eq(interviews.applicationId, applicationId))
       .orderBy(desc(interviews.startedAt)),
   ])
-  return { ...row, invitations: invites, interviews: linkedInterviews }
+  const liveSessions = await db
+    .select({ invitationId: liveInterviewSessions.invitationId, status: liveInterviewSessions.status, completedAt: liveInterviewSessions.completedAt, finalEvaluation: liveInterviewSessions.finalEvaluation })
+    .from(liveInterviewSessions)
+    .where(eq(liveInterviewSessions.applicationId, applicationId))
+  return { ...row, invitations: invites, interviews: linkedInterviews, liveSessions }
 }
 
 export async function updateApplication(
@@ -215,6 +220,14 @@ export async function createInvitation(
       message: data.message ?? null,
     })
     .returning()
+  if (data.kind === "live") {
+    await db.insert(liveInterviewSessions).values({
+      invitationId: row.id,
+      applicationId: app.application.id,
+      recruiterId: app.job.recruiterId,
+      candidateId: app.application.candidateId,
+    })
+  }
   // Inviting moves the application forward.
   if (app.application.status === "applied" || app.application.status === "reviewing") {
     await db.update(applications).set({ status: "interviewing" }).where(eq(applications.id, applicationId))
@@ -302,7 +315,7 @@ export async function listMyApplications(candidateId: string) {
 
 export type MyApplication = Awaited<ReturnType<typeof listMyApplications>>[number]
 
-/** AI interview invitations the candidate hasn't finished, for the dashboard. */
+/** Invitations the candidate hasn't finished, for the dashboard. */
 export async function listPendingInvitations(candidateId: string) {
   return withRetry(() =>
     db
