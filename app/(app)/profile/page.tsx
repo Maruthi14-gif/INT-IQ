@@ -28,7 +28,7 @@ async function Profile() {
   return (
     <>
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Your profile</h1>
+        <h1 className="text-3xl font-medium">Your profile</h1>
         <p className="mt-1 text-muted-foreground">Manage your account and workspace.</p>
       </div>
 

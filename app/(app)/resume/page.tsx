@@ -10,7 +10,7 @@ export default function ResumePage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div className="space-y-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight">Resume & target role</h1>
+        <h1 className="text-3xl font-medium">Resume & target role</h1>
         <p className="text-muted-foreground">The interviewer uses this to ask about your own projects and skills.</p>
       </div>
       <Suspense fallback={<Skeleton className="h-[480px] w-full rounded-2xl" />}>

@@ -46,7 +46,7 @@ async function JobDetail({ params }: Props) {
         <Link href="/jobs" className="text-sm text-muted-foreground hover:text-foreground">
           ← All jobs
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">{job.title}</h1>
+        <h1 className="text-3xl font-medium">{job.title}</h1>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
           <span>{job.company}</span>
           {job.location && (

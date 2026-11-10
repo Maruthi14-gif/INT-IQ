@@ -40,7 +40,7 @@ setup("create a test account and sign in", async ({ page, baseURL }) => {
 
   // The new account lands on a working dashboard.
   await page.goto("/dashboard")
-  await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+  await expect(page.getByRole("heading", { name: /E2E.s interview prep/ })).toBeVisible()
   await page.context().storageState({ path: STORAGE_STATE })
 
   const signedOut = await page.request.post("/api/auth/sign-out", { data: {}, headers: originHeader(baseURL) })

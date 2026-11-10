@@ -14,7 +14,7 @@ export default function ReportsPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <div className="space-y-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight">Reports</h1>
+        <h1 className="text-3xl font-medium">Reports</h1>
         <p className="text-muted-foreground">Every practice interview, with scores and feedback.</p>
       </div>
       <Suspense fallback={<Skeleton className="h-80 w-full rounded-2xl" />}>

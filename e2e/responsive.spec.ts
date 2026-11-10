@@ -9,9 +9,9 @@ const VIEWPORTS = [
 ]
 
 const PAGES = [
-  { path: "/", heading: /Walk into every interview/, auth: false },
-  { path: "/sign-in", heading: /Welcome to INT-IQ/, auth: false },
-  { path: "/dashboard", heading: /Welcome, E2E/, auth: true },
+  { path: "/", heading: /Interviews that follow up/, auth: false },
+  { path: "/sign-in", heading: /Choose your workspace/, auth: false },
+  { path: "/dashboard", heading: /E2E.s interview prep/, auth: true },
 ]
 
 // Layout checks run once (desktop project); the viewport is set per test.

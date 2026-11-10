@@ -395,8 +395,8 @@ export function VoiceInterviewRoom(props: Props) {
   if (status === "scoring") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center" role="status">
-        <VoiceOrb className="size-32" />
-        <h2 className="mt-8 text-2xl font-semibold tracking-tight">Scoring your interview…</h2>
+        <VoiceOrb className="size-32" speaking />
+        <h2 className="mt-8 text-2xl font-medium">Scoring your interview…</h2>
         <p className="mt-2 max-w-sm text-muted-foreground">
           Reviewing every answer and writing your feedback. This takes about 10 seconds.
         </p>
@@ -438,16 +438,15 @@ export function VoiceInterviewRoom(props: Props) {
           <span>{Math.round((progress.answered / progress.total) * 100)}%</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${(progress.answered / progress.total) * 100}%` }} />
+          <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${(progress.answered / progress.total) * 100}%` }} />
         </div>
       </div>
 
       {/* interviewer */}
       <section
         aria-label="Interviewer"
-        className="relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] px-6 py-10 text-center text-white ring-1 ring-white/10 sm:px-12"
+        className="relative rounded-2xl bg-stage px-6 py-10 text-center text-stage-foreground ring-1 ring-white/10 sm:px-12"
       >
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_70%_at_50%_0%,rgb(99_102_241/0.4),transparent_70%)]" />
         <VisualCoach
           ref={visualCoachRef}
           active={live && !assistantSpeaking}
@@ -458,7 +457,7 @@ export function VoiceInterviewRoom(props: Props) {
           className={cn("mx-auto size-28 transition-opacity", !live && "opacity-70")}
           speaking={assistantSpeaking || status === "connecting"}
         />
-        <p className="mt-6 flex items-center justify-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase" aria-live="polite">
+        <p className="mt-6 flex items-center justify-center gap-2 text-sm text-white/60" aria-live="polite">
           {status === "connecting" && <Loader2Icon className="size-3.5 animate-spin" />}
           {live && !assistantSpeaking && !muted && <MicLevel level={micLevel} />}
           {statusText}
@@ -479,11 +478,11 @@ export function VoiceInterviewRoom(props: Props) {
         {(status === "idle" || status === "dropped") && (
           <div className="mt-8 flex flex-col items-center gap-3">
             {allAnswered ? (
-              <Button onClick={finish} className="h-12 bg-white px-6 text-[15px] text-[#0d0c1d] hover:bg-white/90">
+              <Button onClick={finish} className="h-12 bg-white px-6 text-[15px] text-stage hover:bg-white/90">
                 Get my report
               </Button>
             ) : (
-              <Button onClick={start} className="h-12 bg-white px-6 text-[15px] text-[#0d0c1d] hover:bg-white/90">
+              <Button onClick={start} className="h-12 bg-white px-6 text-[15px] text-stage hover:bg-white/90">
                 {status === "dropped" ? <RotateCcwIcon /> : <PhoneCallIcon />}
                 {status === "dropped" || progress.answered > 0 ? "Reconnect and continue" : "Start voice interview"}
               </Button>
@@ -495,7 +494,7 @@ export function VoiceInterviewRoom(props: Props) {
                 "After the last question it ends by itself and shows your report.",
               ].map((tip, i) => (
                 <li key={tip} className="flex gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
-                  <span className="font-semibold text-indigo-300">{i + 1}</span>
+                  <span className="font-mono text-brand">{i + 1}</span>
                   {tip}
                 </li>
               ))}
@@ -570,7 +569,7 @@ export function VoiceInterviewRoom(props: Props) {
                   {line.role === "assistant" ? "Interviewer" : "You"}
                 </span>
                 {line.text}
-                {line.partial && <span className="text-muted-foreground italic"> {line.partial}</span>}
+                {line.partial && <span className="text-muted-foreground"> {line.partial}</span>}
               </p>
             ))
           )}

@@ -16,7 +16,7 @@ export default function ApplicationsPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <div className="space-y-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight">My applications</h1>
+        <h1 className="text-3xl font-medium">My applications</h1>
         <p className="text-muted-foreground">Where each application stands, and interviews recruiters have invited you to.</p>
       </div>
       <Suspense fallback={<Skeleton className="h-80 rounded-2xl" />}>
@@ -88,7 +88,7 @@ async function Applications() {
                               ? "You've started this interview."
                               : "Take it when you're ready. The recruiter sees your report."}
                       </span>
-                      {inv.message && <span className="mt-1 block text-sm italic text-muted-foreground">&ldquo;{inv.message}&rdquo;</span>}
+                      {inv.message && <span className="mt-1 block text-sm text-muted-foreground">&ldquo;{inv.message}&rdquo;</span>}
                     </span>
                     {actionable && (
                       <Button asChild className="h-9">

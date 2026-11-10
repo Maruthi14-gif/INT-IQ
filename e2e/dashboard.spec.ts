@@ -8,7 +8,7 @@ test.describe("Dashboard (signed in)", () => {
     const problems = watchForErrors(page)
     await page.goto("/dashboard")
 
-    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+    await expect(page.getByRole("heading", { name: /E2E.s interview prep/ })).toBeVisible()
     await expect(page.getByTestId("profile-role").filter({ visible: true })).toHaveText("student")
     // No resume yet, so step 1 is the next step
     await expect(page.getByRole("heading", { name: "Add your resume" })).toBeVisible()
@@ -25,7 +25,7 @@ test.describe("Dashboard (signed in)", () => {
   test("session survives a reload, and /sign-in sends you back", async ({ page }) => {
     await page.goto("/dashboard")
     await page.reload()
-    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+    await expect(page.getByRole("heading", { name: /E2E.s interview prep/ })).toBeVisible()
     await page.goto("/sign-in")
     await expect(page).toHaveURL(/\/dashboard$/)
   })
@@ -44,9 +44,9 @@ test.describe("Dashboard (signed in)", () => {
     const user = readRecruiterTestUser()
     await signInWithPassword(page.request, baseURL, user)
     await page.goto("/recruiter")
-    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Hiring overview" })).toBeVisible()
     await page.reload()
-    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Hiring overview" })).toBeVisible()
 
     const roleChange = await page.request.post("/api/profile/role", { data: { role: "student" } })
     expect(roleChange.status()).toBe(409)
@@ -119,7 +119,7 @@ test.describe("Sign out", () => {
     const user = readTestUser()
     await signInWithPassword(page.request, baseURL, user)
     await page.goto("/dashboard")
-    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+    await expect(page.getByRole("heading", { name: /E2E.s interview prep/ })).toBeVisible()
 
     if (isMobile) await page.locator("[data-sidebar=trigger]").click()
     await page.getByRole("button", { name: new RegExp(user.email.replace(/[.+]/g, "\\$&")) }).click()

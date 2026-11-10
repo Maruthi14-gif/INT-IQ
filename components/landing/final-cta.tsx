@@ -1,28 +1,25 @@
-import { ArrowRightIcon } from "lucide-react"
 import Link from "next/link"
-import { VoiceOrb } from "@/components/brand/voice-orb"
 import { Button } from "@/components/ui/button"
 
 export function FinalCta() {
   return (
     <section aria-labelledby="cta-title" className="border-t">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
-        <div className="relative isolate overflow-hidden rounded-3xl bg-[#0d0c1d] px-6 py-14 text-center text-white sm:px-12 sm:py-20">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,rgb(99_102_241/0.45),transparent_70%)]" />
-          <div className="absolute inset-0 -z-10 bg-grid opacity-40 [mask-image:radial-gradient(60%_60%_at_50%_40%,black,transparent)]" />
-          <VoiceOrb className="mx-auto size-20" />
-          <h2 id="cta-title" className="mx-auto mt-8 max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
-            Your next interview is <span className="font-display font-normal text-indigo-300 italic">closer than you think.</span>
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-20 sm:px-6 md:flex-row md:items-end md:justify-between md:py-24">
+        <div className="max-w-xl">
+          <h2 id="cta-title" className="text-3xl font-medium text-balance sm:text-4xl">
+            Rehearse your next interview tonight
           </h2>
-          <p className="mx-auto mt-4 max-w-md text-pretty text-white/70">
-            Start a free practice round in under a minute. All you need is a microphone.
+          <p className="mt-4 text-pretty text-muted-foreground">
+            Add your resume, pick a round and start talking. The report is ready the moment you finish.
           </p>
-          <Button asChild className="mt-8 h-11 bg-white px-5 text-[15px] text-[#0d0c1d] hover:bg-white/90">
-            <Link href="/sign-in">
-              Start practicing free
-              <ArrowRightIcon data-icon="inline-end" />
-            </Link>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+          <Button asChild className="h-11 px-5 text-[15px]">
+            <Link href="/sign-in">Start practicing</Link>
           </Button>
+          <Link href="/sign-in" className="text-[15px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+            I&rsquo;m hiring
+          </Link>
         </div>
       </div>
     </section>

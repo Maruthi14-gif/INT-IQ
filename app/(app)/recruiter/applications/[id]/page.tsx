@@ -51,7 +51,7 @@ async function Applicant({ params }: Props) {
           ← {job.title}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">{name}</h1>
+          <h1 className="text-3xl font-medium">{name}</h1>
           <ApplicationStatusBadge status={application.status} />
         </div>
         <p className="text-muted-foreground">
@@ -137,10 +137,10 @@ async function Applicant({ params }: Props) {
                   <article key={session.invitationId} className="space-y-3 rounded-xl border p-4 text-sm">
                     <p className="font-medium">{evaluation.summary}</p>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div><h3 className="text-xs font-medium text-muted-foreground uppercase">Strengths</h3><ul className="mt-1.5 space-y-1">{evaluation.strengths.map((item) => <li key={item}>• {item}</li>)}</ul></div>
-                      <div><h3 className="text-xs font-medium text-muted-foreground uppercase">Areas to probe</h3><ul className="mt-1.5 space-y-1">{evaluation.weaknesses.map((item) => <li key={item}>• {item}</li>)}</ul></div>
+                      <div><h3 className="text-xs font-medium text-muted-foreground">Strengths</h3><ul className="mt-1.5 space-y-1">{evaluation.strengths.map((item) => <li key={item}>• {item}</li>)}</ul></div>
+                      <div><h3 className="text-xs font-medium text-muted-foreground">Areas to probe</h3><ul className="mt-1.5 space-y-1">{evaluation.weaknesses.map((item) => <li key={item}>• {item}</li>)}</ul></div>
                     </div>
-                    <div><h3 className="text-xs font-medium text-muted-foreground uppercase">Evidence</h3><ul className="mt-1.5 space-y-1 text-muted-foreground">{evaluation.evidence.map((item) => <li key={item}>• {item}</li>)}</ul></div>
+                    <div><h3 className="text-xs font-medium text-muted-foreground">Evidence</h3><ul className="mt-1.5 space-y-1 text-muted-foreground">{evaluation.evidence.map((item) => <li key={item}>• {item}</li>)}</ul></div>
                     <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{evaluation.recommendation}</p>
                   </article>
                 )

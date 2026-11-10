@@ -158,7 +158,7 @@ export function ResumeForm({ initial }: { initial: ResumeProfile }) {
               }}
               className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-7 text-center transition-colors hover:bg-accent/50"
             >
-              <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand-text">
+              <span className="grid size-10 place-items-center rounded-xl bg-muted text-muted-foreground">
                 {file ? <FileTextIcon className="size-5" /> : <UploadIcon className="size-5" />}
               </span>
               {file ? (
@@ -225,7 +225,7 @@ export function ResumeForm({ initial }: { initial: ResumeProfile }) {
             <p className="text-sm leading-relaxed text-muted-foreground">{insights.summary}</p>
 
             <div>
-              <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Skills</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Skills</h3>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {insights.skills.map((s) => (
                   <Badge key={s} variant="secondary">
@@ -237,7 +237,7 @@ export function ResumeForm({ initial }: { initial: ResumeProfile }) {
 
             {insights.projects.length > 0 && (
               <div>
-                <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Projects it will ask about</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Projects it will ask about</h3>
                 <ul className="mt-2 space-y-2">
                   {insights.projects.map((p) => (
                     <li key={p.name} className="rounded-xl border px-3 py-2 text-sm">
@@ -251,7 +251,7 @@ export function ResumeForm({ initial }: { initial: ResumeProfile }) {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Strengths</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Strengths</h3>
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {insights.strengths.map((s) => (
                     <li key={s} className="flex gap-2">
@@ -262,7 +262,7 @@ export function ResumeForm({ initial }: { initial: ResumeProfile }) {
                 </ul>
               </div>
               <div>
-                <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">To work on</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">To work on</h3>
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {insights.gaps.map((g) => (
                     <li key={g} className="flex gap-2">

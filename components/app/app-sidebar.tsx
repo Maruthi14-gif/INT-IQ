@@ -41,8 +41,8 @@ export function AppSidebar({ user, role = "student" }: { user: ReactNode; role?:
               <Link href={home}>
                 <LogoMark className="size-8 rounded-[10px]" />
                 <span className="grid leading-tight">
-                  <span className="text-[15px] font-semibold tracking-tight">
-                    INT<span className="text-brand-text">-</span>IQ
+                  <span className="text-[15px] font-medium">
+                    INT-IQ
                   </span>
                   <span className="text-xs text-muted-foreground">{subtitle}</span>
                 </span>

@@ -251,8 +251,8 @@ export function InterviewRoom(props: Props) {
   if (phase === "scoring") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center" role="status">
-        <VoiceOrb className="size-32" />
-        <h2 className="mt-8 text-2xl font-semibold tracking-tight">Scoring your interview…</h2>
+        <VoiceOrb className="size-32" speaking />
+        <h2 className="mt-8 text-2xl font-medium">Scoring your interview…</h2>
         <p className="mt-2 max-w-sm text-muted-foreground">
           Reviewing every answer and writing your feedback. This takes about 10 seconds.
         </p>
@@ -301,7 +301,7 @@ export function InterviewRoom(props: Props) {
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-brand transition-all duration-500"
+            className="h-full rounded-full bg-brand transition-[width] duration-500"
             style={{ width: `${((number - 1) / props.totalQuestions) * 100}%` }}
           />
         </div>
@@ -310,12 +310,11 @@ export function InterviewRoom(props: Props) {
       {/* interviewer */}
       <section
         aria-label="Interviewer"
-        className="relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] px-6 py-10 text-center text-white ring-1 ring-white/10 sm:px-12"
+        className="relative rounded-2xl bg-stage px-6 py-10 text-center text-stage-foreground ring-1 ring-white/10 sm:px-12"
       >
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_70%_at_50%_0%,rgb(99_102_241/0.4),transparent_70%)]" />
         <ProctorCam proctor={proctor} className="absolute top-3 right-3" />
         <VoiceOrb className={cn("mx-auto size-28 transition-opacity", busy && "opacity-60")} speaking={speaker.speaking || busy} />
-        <p className="mt-6 flex items-center justify-center gap-2 text-xs font-medium tracking-wide text-white/60 uppercase" aria-live="polite">
+        <p className="mt-6 flex items-center justify-center gap-2 text-sm text-white/60" aria-live="polite">
           {dictation.listening && <VoiceBars className="h-3 text-emerald-300" bars={4} />}
           {busy && <Loader2Icon className="size-3.5 animate-spin" />}
           {status}

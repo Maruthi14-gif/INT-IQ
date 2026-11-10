@@ -9,7 +9,7 @@ export default function NewJobPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <div className="space-y-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight">New job</h1>
+        <h1 className="text-3xl font-medium">New job</h1>
         <p className="text-muted-foreground">Describe the role. Candidates see the title, company, skills and description.</p>
       </div>
       <Suspense fallback={null}>

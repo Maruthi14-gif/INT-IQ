@@ -107,14 +107,14 @@ export function InterviewSetup({
                 disabled={unavailable}
                 onClick={() => setMode(m)}
                 className={cn(
-                  "flex gap-4 rounded-2xl border bg-card p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
+                  "flex gap-4 rounded-2xl border bg-card p-5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                   mode === m ? "border-brand ring-3 ring-brand/20" : "hover:bg-accent/50",
                 )}
               >
                 <span
                   className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-xl border",
-                    mode === m ? "bg-brand text-primary-foreground" : "bg-brand-soft text-brand-text",
+                    mode === m ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground",
                   )}
                 >
                   <Icon className="size-5" />
@@ -123,7 +123,7 @@ export function InterviewSetup({
                   <span className="block font-medium">
                     {title}
                     {m === "voice" && voiceAvailable && (
-                      <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-text">Recommended</span>
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">Recommended</span>
                     )}
                     {unavailable && <span className="ml-2 text-xs font-normal text-muted-foreground">Not set up yet</span>}
                   </span>
@@ -147,14 +147,14 @@ export function InterviewSetup({
               aria-pressed={type === t}
               onClick={() => setType(t)}
               className={cn(
-                "rounded-2xl border bg-card p-5 text-left transition-all",
+                "rounded-2xl border bg-card p-5 text-left transition-colors",
                 type === t ? "border-brand ring-3 ring-brand/20" : "hover:bg-accent/50",
               )}
             >
               <span
                 className={cn(
                   "grid size-10 place-items-center rounded-xl border",
-                  type === t ? "bg-brand text-primary-foreground" : "bg-brand-soft text-brand-text",
+                  type === t ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground",
                 )}
               >
                 <Icon className="size-5" />

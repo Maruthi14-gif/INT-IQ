@@ -235,7 +235,7 @@ export function SignInForm() {
           className="space-y-7"
         >
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight">Choose your workspace</h1>
+            <h1 className="text-3xl font-medium">Choose your workspace</h1>
             <p className="text-muted-foreground">Select how you&rsquo;ll use INT-IQ. This choice is saved to your account.</p>
           </div>
 
@@ -256,7 +256,7 @@ export function SignInForm() {
                   role === optionRole ? "border-brand bg-brand-soft/60 ring-3 ring-brand/20" : "bg-card hover:bg-accent/50",
                 )}
               >
-                <span className={cn("grid size-9 place-items-center rounded-xl border", role === optionRole ? "bg-brand text-primary-foreground" : "bg-brand-soft text-brand-text")}>
+                <span className={cn("grid size-9 place-items-center rounded-xl border", role === optionRole ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground")}>
                   <Icon className="size-4" />
                 </span>
                 <span className="mt-3 block text-sm font-semibold">{title}</span>
@@ -276,7 +276,7 @@ export function SignInForm() {
             Continue with Google
           </Button>
 
-          <div className="flex items-center gap-3 text-xs tracking-wider text-muted-foreground uppercase">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
             or
             <span className="h-px flex-1 bg-border" />
@@ -336,10 +336,10 @@ export function SignInForm() {
           </button>
 
           <div className="space-y-3">
-            <span className="grid size-12 place-items-center rounded-2xl border bg-brand-soft text-brand-text">
+            <span className="grid size-12 place-items-center rounded-2xl border bg-muted text-muted-foreground">
               <MailCheckIcon className="size-6" />
             </span>
-            <h1 className="text-3xl font-semibold tracking-tight">Check your email</h1>
+            <h1 className="text-3xl font-medium">Check your email</h1>
             <p className="text-muted-foreground">
               Enter the 6-digit code we sent to <span className="font-medium text-foreground">{email}</span>
             </p>

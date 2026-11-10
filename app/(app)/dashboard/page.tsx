@@ -1,8 +1,7 @@
-import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, CheckIcon, ClockIcon, FileTextIcon, GaugeIcon, MicIcon, PlayIcon, TrophyIcon, type LucideIcon } from "lucide-react"
+import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, CheckIcon, FileTextIcon, MicIcon, PlayIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
-import { VoiceOrb } from "@/components/brand/voice-orb"
 import { InterviewList } from "@/components/report/interview-list"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -63,15 +62,13 @@ async function Dashboard() {
     <>
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Welcome, <span className="font-display font-normal text-brand-text italic">{firstName}</span>
-          </h1>
+          <h1 className="text-3xl font-medium">{firstName}&rsquo;s interview prep</h1>
           <Badge variant="outline" className="capitalize" data-testid="profile-role">
             {profile.role}
           </Badge>
         </div>
         <p className="text-muted-foreground">
-          {profile.targetRole ? `Preparing for ${profile.targetRole}.` : "Let’s get you interview-ready."}
+          {profile.targetRole ? `Preparing for ${profile.targetRole}` : "Add your resume and target role to get personal questions"}
         </p>
       </div>
 
@@ -89,7 +86,7 @@ async function Dashboard() {
           <ul className="divide-y">
             {invites.map((inv) => (
               <li key={inv.id} className="flex flex-wrap items-center gap-4 px-6 py-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
                   {inv.kind === "ai" ? <MicIcon className="size-4" /> : <CalendarIcon className="size-4" />}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -122,9 +119,9 @@ async function Dashboard() {
       {interviews.length > 0 && (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard icon={TrophyIcon} label="Interviews completed" value={String(completed.length)} hint={best !== null ? `Best score ${best}` : "Finish one to see scores"} />
-            <StatCard icon={GaugeIcon} label="Average score" value={average !== null ? String(average) : "—"} hint={average !== null ? "Out of 100" : "Finish one to see scores"} />
-            <StatCard icon={ClockIcon} label="Practice time" value={`${practiceMinutes(interviews)} min`} hint="Time spent in interviews" />
+            <StatCard label="Interviews completed" value={String(completed.length)} hint={best !== null ? `Best score ${best}` : "Finish one to see scores"} />
+            <StatCard label="Average score" value={average !== null ? String(average) : "—"} hint={average !== null ? "Out of 100" : "Finish one to see scores"} />
+            <StatCard label="Practice time" value={`${practiceMinutes(interviews)} min`} hint="Time spent in interviews" />
           </div>
 
           <section className="overflow-hidden rounded-2xl border bg-card">
@@ -196,27 +193,23 @@ function NextStepCard({ next, className }: { next: NextStep; className?: string 
   return (
     <section
       className={cn(
-        "relative isolate overflow-hidden rounded-2xl bg-[#0d0c1d] p-6 text-white ring-1 ring-white/10 sm:p-8",
+        "rounded-2xl bg-stage p-6 text-stage-foreground ring-1 ring-white/10 sm:p-8",
         className,
       )}
       aria-labelledby="next-step-title"
     >
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_90%_at_85%_20%,rgb(99_102_241/0.45),transparent_70%)]" />
-      <div className="absolute inset-0 -z-10 bg-grid opacity-25 [mask-image:linear-gradient(to_left,black,transparent)]" />
-
       <div className="flex items-start justify-between gap-6">
         <div className="max-w-md">
           <Badge className="border-white/15 bg-white/10 text-white/80">{content.eyebrow}</Badge>
-          <h2 id="next-step-title" className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h2 id="next-step-title" className="mt-4 text-2xl font-medium sm:text-3xl">
             {content.title}
           </h2>
           <p className="mt-2 text-white/70">{content.body}</p>
         </div>
-        <VoiceOrb className="hidden size-24 shrink-0 sm:grid" />
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <Button asChild className="h-11 bg-white px-5 text-[15px] text-[#0d0c1d] hover:bg-white/90">
+        <Button asChild className="h-11 bg-white px-5 text-[15px] text-stage hover:bg-white/90">
           <Link href={content.primary.href}>
             <PrimaryIcon />
             {content.primary.label}
@@ -251,7 +244,7 @@ function HowItWorks({ steps }: { steps: { label: string; hint: string; done: boo
               <span
                 className={cn(
                   "grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold",
-                  step.done && "border-transparent bg-brand text-primary-foreground",
+                  step.done && "border-transparent bg-muted text-foreground",
                   isCurrent && "border-brand text-brand-text ring-3 ring-brand/20",
                   !step.done && !isCurrent && "text-muted-foreground",
                 )}
@@ -286,14 +279,11 @@ function HowItWorks({ steps }: { steps: { label: string; hint: string; done: boo
 
 /* ── Stats ──────────────────────────────────────────────────── */
 
-function StatCard({ icon: Icon, label, value, hint }: { icon: LucideIcon; label: string; value: string; hint: string }) {
+function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-2xl border bg-card p-5">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Icon className="size-4" />
-        {label}
-      </div>
-      <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{value}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-3 font-mono text-3xl font-medium tabular-nums">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   )

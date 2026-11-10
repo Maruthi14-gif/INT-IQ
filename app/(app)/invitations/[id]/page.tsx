@@ -44,9 +44,9 @@ async function Invitation({ params }: Props) {
         <Link href="/applications" className="text-sm text-muted-foreground hover:text-foreground">
           ← My applications
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-medium">
           {invitation.kind === "ai" ? "Interview for " : "Live interview for "}
-          <span className="font-display font-normal text-brand-text italic">{job.title}</span>
+          <span>{job.title}</span>
         </h1>
         <p className="text-muted-foreground">{job.company}</p>
       </div>

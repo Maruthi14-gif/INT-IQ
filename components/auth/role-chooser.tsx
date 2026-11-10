@@ -52,7 +52,7 @@ export function RoleChooser({ firstName, initialRole }: { firstName: string | nu
   return (
     <div className="w-full max-w-2xl space-y-8">
       <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">{firstName ? `Welcome, ${firstName}` : "Welcome to INT-IQ"}</h1>
+        <h1 className="text-3xl font-medium">{firstName ? `Welcome, ${firstName}` : "Welcome to INT-IQ"}</h1>
         <p className="text-muted-foreground">Choose the workspace for this account. Its role is fixed after setup.</p>
       </div>
 
@@ -70,7 +70,7 @@ export function RoleChooser({ firstName, initialRole }: { firstName: string | nu
               role === r ? "border-brand ring-3 ring-brand/20" : "hover:bg-accent/50",
             )}
           >
-            <span className={cn("grid size-10 place-items-center rounded-xl border", role === r ? "bg-brand text-primary-foreground" : "bg-brand-soft text-brand-text")}>
+            <span className={cn("grid size-10 place-items-center rounded-xl border", role === r ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground")}>
               <Icon className="size-5" />
             </span>
             <span className="mt-4 block font-medium">{title}</span>

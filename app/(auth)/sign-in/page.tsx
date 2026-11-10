@@ -5,7 +5,6 @@ import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { SignInForm } from "@/components/auth/sign-in-form"
 import { Logo } from "@/components/brand/logo"
-import { VoiceOrb } from "@/components/brand/voice-orb"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getOrCreateProfile } from "@/lib/profiles"
 import { getSession, homeFor } from "@/lib/session"
@@ -16,8 +15,8 @@ export const metadata: Metadata = {
 
 const PERKS = [
   "Voice interviews built from your resume",
-  "Feedback and a score for every answer",
-  "A clear plan for what to practice next",
+  "A score and a stronger answer for every question",
+  "Recruiters invite candidates and read the reports",
 ]
 
 export default function SignInPage() {
@@ -47,29 +46,31 @@ export default function SignInPage() {
       </div>
 
       {/* brand panel */}
-      <div className="relative isolate m-3 hidden overflow-hidden rounded-3xl bg-[#0d0c1d] text-white lg:flex lg:flex-col lg:items-center lg:justify-center">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(70%_60%_at_50%_30%,rgb(99_102_241/0.4),transparent_70%)]" />
-        <div className="absolute inset-0 -z-10 bg-grid opacity-30 [mask-image:radial-gradient(60%_60%_at_50%_40%,black,transparent)]" />
-
-        <div className="flex max-w-md flex-col items-center px-10 text-center">
-          <VoiceOrb className="size-36" />
-          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left backdrop-blur-md">
-            <p className="text-[11px] font-medium tracking-wider text-white/50 uppercase">AI interviewer</p>
-            <p className="mt-1.5 text-[15px] leading-relaxed text-white/90">
-              &ldquo;Tell me about a project you&rsquo;re proud of, and one decision you&rsquo;d make differently now.&rdquo;
-            </p>
+      <div className="m-3 hidden rounded-2xl bg-stage text-stage-foreground lg:flex lg:flex-col lg:justify-center">
+        <div className="mx-auto w-full max-w-md px-10">
+          {/* The product's own moment: a follow-up that picks up a detail from the answer. */}
+          <div className="space-y-5 rounded-xl bg-stage-raised p-5 ring-1 ring-white/10">
+            <div>
+              <p className="text-xs text-white/50">You</p>
+              <p className="mt-1 text-[15px] leading-7 text-white/70">
+                I split the placement portal into a Next.js front end and a{" "}
+                <mark className="highlight bg-transparent text-white">Node API with a job queue</mark> for resume parsing.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-white/50">
+                Interviewer <span className="ml-2 text-brand">follow-up</span>
+              </p>
+              <p className="mt-1 text-[15px] leading-7">Why a queue there, and what happened when a parse failed halfway?</p>
+            </div>
           </div>
 
-          <h2 className="mt-10 text-3xl font-semibold tracking-tight text-balance">
-            Practice the interview <span className="font-display font-normal text-indigo-300 italic">before it counts.</span>
-          </h2>
+          <h2 className="mt-10 text-3xl font-medium text-balance">Practice the interview before it counts</h2>
 
-          <ul className="mt-8 space-y-3 text-left text-sm text-white/80">
+          <ul className="mt-6 space-y-3 text-sm text-white/70">
             {PERKS.map((perk) => (
               <li key={perk} className="flex items-center gap-3">
-                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-indigo-500/25 text-indigo-200">
-                  <CheckIcon className="size-3" />
-                </span>
+                <CheckIcon className="size-4 shrink-0 text-white/50" strokeWidth={1.5} />
                 {perk}
               </li>
             ))}

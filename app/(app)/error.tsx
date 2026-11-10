@@ -10,7 +10,7 @@ export default function AppError({ error, retry }: { error: Error & { digest?: s
       <span className="grid size-12 place-items-center rounded-2xl border bg-muted text-warning">
         <TriangleAlertIcon className="size-5" />
       </span>
-      <h1 className="mt-5 text-xl font-semibold tracking-tight">Something went wrong</h1>
+      <h1 className="mt-5 text-xl font-medium">Something went wrong</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         This page didn&rsquo;t load. It&rsquo;s usually a brief connection hiccup, so trying again normally fixes it.
       </p>

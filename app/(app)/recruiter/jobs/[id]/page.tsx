@@ -48,7 +48,7 @@ async function JobDetail({ params }: Props) {
             ← All jobs
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">{job.title}</h1>
+            <h1 className="text-3xl font-medium">{job.title}</h1>
             <JobStatusBadge status={job.status} />
           </div>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
@@ -125,7 +125,7 @@ async function JobDetail({ params }: Props) {
             {applicants.map((a) => (
               <li key={a.id}>
                 <Link href={`/recruiter/applications/${a.id}`} className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-accent/40">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-sm font-medium text-brand-text">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-sm font-medium text-foreground">
                     {(a.name?.trim() || a.email)[0]?.toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">

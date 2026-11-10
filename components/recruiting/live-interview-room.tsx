@@ -414,7 +414,7 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">Live interview · {dateTime(room.scheduledAt)}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{room.job.title} <span className="font-display font-normal text-brand-text italic">at {room.job.company}</span></h1>
+          <h1 className="text-2xl font-medium">{room.job.title} <span className="text-muted-foreground">at {room.job.company}</span></h1>
         </div>
         <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm", connection === "connected" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground")}>
           <span className={cn("size-2 rounded-full", connection === "connected" ? "bg-emerald-500" : connection === "error" ? "bg-destructive" : "bg-amber-500")} />
@@ -548,7 +548,7 @@ function CopilotPanel({ room, notes, notesSaved, onNotesChange, onSaveNotes, bus
 }
 
 function PlanView({ plan }: { plan: CopilotPlan }) {
-  return <div className="mt-4 space-y-3 text-sm"><List title="Focus areas" items={plan.focusAreas} /><List title="Verify" items={plan.verificationSkills} /><List title="Project questions" items={plan.projectQuestions} /><div><p className="text-xs font-medium text-muted-foreground uppercase">Structured plan</p><ol className="mt-1.5 space-y-2">{plan.interviewPlan.map((stage) => <li key={stage.stage} className="rounded-lg bg-muted/60 p-2.5"><span className="font-medium">{stage.stage}</span><span className="block text-xs text-muted-foreground">{stage.aim}</span>{stage.questions.map((question) => <p key={question} className="mt-1 text-sm">{question}</p>)}</li>)}</ol></div></div>
+  return <div className="mt-4 space-y-3 text-sm"><List title="Focus areas" items={plan.focusAreas} /><List title="Verify" items={plan.verificationSkills} /><List title="Project questions" items={plan.projectQuestions} /><div><p className="text-xs font-medium text-muted-foreground">Structured plan</p><ol className="mt-1.5 space-y-2">{plan.interviewPlan.map((stage) => <li key={stage.stage} className="rounded-lg bg-muted/60 p-2.5"><span className="font-medium">{stage.stage}</span><span className="block text-xs text-muted-foreground">{stage.aim}</span>{stage.questions.map((question) => <p key={question} className="mt-1 text-sm">{question}</p>)}</li>)}</ol></div></div>
 }
 
 function SuggestionView({ suggestions }: { suggestions: CopilotSuggestions }) {
@@ -557,7 +557,7 @@ function SuggestionView({ suggestions }: { suggestions: CopilotSuggestions }) {
 
 function List({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null
-  return <div><p className="text-xs font-medium text-muted-foreground uppercase">{title}</p><ul className="mt-1.5 space-y-1.5 text-sm">{items.map((item) => <li key={item} className="flex gap-2"><span className="mt-2 size-1 shrink-0 rounded-full bg-current" />{item}</li>)}</ul></div>
+  return <div><p className="text-xs font-medium text-muted-foreground">{title}</p><ul className="mt-1.5 space-y-1.5 text-sm">{items.map((item) => <li key={item} className="flex gap-2"><span className="mt-2 size-1 shrink-0 rounded-full bg-current" />{item}</li>)}</ul></div>
 }
 
 function EvaluationEditor({ draft, onChange, onApprove, saving }: { draft: EvaluationDraft; onChange: (draft: EvaluationDraft) => void; onApprove: () => void; saving: boolean }) {

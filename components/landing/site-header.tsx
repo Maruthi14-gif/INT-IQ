@@ -4,13 +4,13 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 
 const NAV = [
-  { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How it works" },
+  { href: "#candidates", label: "For candidates" },
+  { href: "#recruiters", label: "For recruiters" },
 ]
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-transparent bg-background/70 backdrop-blur-xl supports-backdrop-filter:bg-background/55">
+    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-backdrop-filter:bg-background/80">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
         <Link href="/" aria-label="INT-IQ home" className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <Logo />
@@ -28,12 +28,12 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-4">
           <ThemeToggle />
-          <Button asChild variant="ghost" className="hidden h-9 px-3 sm:inline-flex">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild className="h-9 px-3.5">
+          <Link href="/sign-in" className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline">
+            Sign in
+          </Link>
+          <Button asChild className="h-9 px-4">
             <Link href="/sign-in">Start practicing</Link>
           </Button>
         </div>

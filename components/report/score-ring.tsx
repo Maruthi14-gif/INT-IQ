@@ -28,7 +28,7 @@ export function ScoreRing({ score, className }: { score: number; className?: str
         />
       </svg>
       <div className="text-center">
-        <span className="block text-4xl font-semibold tracking-tight tabular-nums">{clamped}</span>
+        <span className="block text-4xl font-medium tabular-nums">{clamped}</span>
         <span className="text-xs text-muted-foreground">out of 100</span>
       </div>
     </div>

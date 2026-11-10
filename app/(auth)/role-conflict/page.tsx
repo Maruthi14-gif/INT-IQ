@@ -31,11 +31,11 @@ async function RoleConflict() {
         <ThemeToggle />
       </header>
       <section className="mx-auto my-auto w-full max-w-lg space-y-6 rounded-2xl border bg-card p-6 text-center sm:p-8">
-        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-brand-soft text-brand-text">
+        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
           <span className="text-xl font-semibold">!</span>
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">This account already has a workspace</h1>
+          <h1 className="text-2xl font-medium">This account already has a workspace</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
             This account is set up as a {currentRole}. We kept its existing role. To use another workspace, sign out and choose a different account or the matching role.
           </p>

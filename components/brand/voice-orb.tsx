@@ -1,25 +1,31 @@
 import { cn } from "@/lib/utils"
 
+const HEIGHTS = [0.35, 0.6, 1, 0.6, 0.35]
+
 /**
- * Animated "AI interviewer" orb. Pure CSS, so it works in Server Components.
- * Later the interview room will drive its scale from live audio levels.
+ * The interviewer's presence: a flat circle with voice bars. The bars move only while
+ * the interviewer is speaking (a live state), and rest otherwise. Pure CSS, so it works
+ * in Server Components. Kept as "VoiceOrb" so existing imports don't change.
  */
-export function VoiceOrb({ className, speaking = true }: { className?: string; speaking?: boolean }) {
+export function VoiceOrb({ className, speaking = false }: { className?: string; speaking?: boolean }) {
   return (
-    <div className={cn("relative grid size-28 place-items-center", className)} aria-hidden>
-      {speaking && (
-        <>
-          <span className="absolute inset-0 animate-orb-ring rounded-full border border-indigo-400/40" />
-          <span className="absolute inset-0 animate-orb-ring rounded-full border border-indigo-400/30 [animation-delay:1.4s]" />
-        </>
+    <div
+      className={cn(
+        "relative grid size-28 place-items-center rounded-full bg-stage-raised ring-1 ring-white/10 transition-shadow duration-300",
+        speaking && "ring-brand/50",
+        className,
       )}
-      <span
-        className={cn(
-          "absolute inset-[14%] rounded-full bg-[radial-gradient(circle_at_30%_25%,#c7d2fe_0%,#818cf8_35%,#4f46e5_70%,#312e81_100%)] shadow-[0_0_60px_-8px_rgb(99_102_241/0.7),inset_0_-8px_20px_rgb(30_27_75/0.5)]",
-          speaking && "animate-orb-breathe",
-        )}
-      />
-      <span className="absolute inset-[24%] rounded-full bg-[radial-gradient(circle_at_35%_30%,rgb(255_255_255/0.55),transparent_55%)]" />
+      aria-hidden
+    >
+      <span className="flex h-[34%] items-center gap-[7%]">
+        {HEIGHTS.map((h, i) => (
+          <span
+            key={i}
+            className={cn("w-1.5 origin-center rounded-full bg-brand", speaking && "animate-bar")}
+            style={{ height: `${h * 100}%`, animationDelay: `${(i * 0.13) % 0.6}s`, opacity: speaking ? 1 : 0.55 }}
+          />
+        ))}
+      </span>
     </div>
   )
 }

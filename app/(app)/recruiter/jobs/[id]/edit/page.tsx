@@ -32,7 +32,7 @@ async function Editor({ params }: Props) {
         <Link href={`/recruiter/jobs/${job.id}`} className="text-sm text-muted-foreground hover:text-foreground">
           ← Back to job
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">Edit job</h1>
+        <h1 className="text-3xl font-medium">Edit job</h1>
       </div>
       <JobForm job={job} />
     </>

@@ -53,7 +53,7 @@ export function ReportView({ interview, viewer, candidateName, backHref }: Props
               </>
             )}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight">{viewer === "recruiter" && candidateName ? `${candidateName}’s interview` : "Interview report"}</h1>
+          <h1 className="text-3xl font-medium">{viewer === "recruiter" && candidateName ? `${candidateName}’s interview` : "Interview report"}</h1>
         </div>
         {viewer === "candidate" && (
           <Button asChild className="h-10 px-4">
@@ -181,7 +181,7 @@ export function ReportView({ interview, viewer, candidateName, backHref }: Props
 
       {/* per question */}
       <section className="space-y-4" aria-labelledby="answers-title">
-        <h2 id="answers-title" className="text-xl font-semibold tracking-tight">
+        <h2 id="answers-title" className="text-xl font-medium">
           Answer by answer
         </h2>
         {interview.turns.map((turn, i) => {

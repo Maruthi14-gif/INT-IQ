@@ -6,8 +6,10 @@
 
 /* ─────────────────────────────────────────────────────────────
  * INT-IQ design tokens
- * One accent (indigo) on calm neutrals. Dark is the default theme.
- * Fonts: Geist (UI), Geist Mono (code), Instrument Serif (display accents).
+ * World: the night-before desk. Ink-blue neutrals, one highlighter-amber accent
+ * used rarely (primary selection, key figures, the highlighter mark).
+ * Dark is the default theme. Fonts: Geist (UI), Geist Mono (figures),
+ * Instrument Serif (the landing headline only).
  * ───────────────────────────────────────────────────────────── */
 
 @theme inline {
@@ -37,6 +39,11 @@
   --color-brand: var(--brand);
   --color-brand-text: var(--brand-text);
   --color-brand-soft: var(--brand-soft);
+  --color-brand-foreground: var(--brand-foreground);
+  /* The interview "stage": a fixed dark surface in both themes (interview rooms). */
+  --color-stage: #0e1119;
+  --color-stage-raised: #171b25;
+  --color-stage-foreground: #eef0f5;
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-chart-1: var(--chart-1);
@@ -61,99 +68,102 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  --animate-orb-breathe: orb-breathe 3.2s ease-in-out infinite;
-  --animate-orb-ring: orb-ring 2.8s ease-out infinite;
   --animate-bar: bar 1.1s ease-in-out infinite;
 }
 
-/* Light theme */
+/* Light theme: ink ramp */
 :root {
   --radius: 0.75rem;
 
-  --background: oklch(0.99 0.002 275);
-  --foreground: oklch(0.17 0.015 275);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.17 0.015 275);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.17 0.015 275);
+  --background: #f5f7fa;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
 
-  --primary: oklch(0.51 0.25 277);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.965 0.004 275);
-  --secondary-foreground: oklch(0.2 0.015 275);
-  --muted: oklch(0.965 0.004 275);
-  --muted-foreground: oklch(0.49 0.015 275);
-  --accent: oklch(0.955 0.012 277);
-  --accent-foreground: oklch(0.22 0.03 277);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.915 0.006 275);
-  --input: oklch(0.905 0.006 275);
-  --ring: oklch(0.51 0.25 277);
+  /* Primary action: the ink itself, white text. */
+  --primary: #111827;
+  --primary-foreground: #ffffff;
+  --secondary: #eceff4;
+  --secondary-foreground: #111827;
+  --muted: #eceff4;
+  --muted-foreground: #4b5565;
+  --accent: #eceff4;
+  --accent-foreground: #111827;
+  --destructive: #dc2626;
+  --border: rgb(17 24 39 / 9%);
+  --input: rgb(17 24 39 / 14%);
+  --ring: #b7791f;
 
-  --brand: oklch(0.51 0.25 277);
-  --brand-text: oklch(0.47 0.24 277);
-  --brand-soft: oklch(0.95 0.03 277);
-  --success: oklch(0.56 0.15 155);
-  --warning: oklch(0.68 0.16 70);
+  /* Highlighter amber. As ink on white it needs the darker shade. */
+  --brand: #f2b544;
+  --brand-foreground: #1a1405;
+  --brand-text: #8a5a00;
+  --brand-soft: #fcefd2;
+  --success: #15803d;
+  --warning: #c2410c;
 
-  --chart-1: oklch(0.51 0.25 277);
-  --chart-2: oklch(0.6 0.2 300);
-  --chart-3: oklch(0.62 0.13 185);
-  --chart-4: oklch(0.72 0.16 70);
-  --chart-5: oklch(0.63 0.2 10);
+  --chart-1: #f2b544;
+  --chart-2: #4b5565;
+  --chart-3: #6b7487;
+  --chart-4: #94a0b4;
+  --chart-5: #c3cad6;
 
-  --sidebar: oklch(0.982 0.003 275);
-  --sidebar-foreground: oklch(0.17 0.015 275);
-  --sidebar-primary: oklch(0.51 0.25 277);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.945 0.008 275);
-  --sidebar-accent-foreground: oklch(0.17 0.015 275);
-  --sidebar-border: oklch(0.915 0.006 275);
-  --sidebar-ring: oklch(0.51 0.25 277);
+  --sidebar: #eef1f5;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #111827;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e2e6ee;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: rgb(17 24 39 / 8%);
+  --sidebar-ring: #b7791f;
 }
 
-/* Dark theme (default) */
+/* Dark theme (default): ink ramp */
 .dark {
-  --background: oklch(0.135 0.006 275);
-  --foreground: oklch(0.965 0.004 275);
-  --card: oklch(0.168 0.008 275);
-  --card-foreground: oklch(0.965 0.004 275);
-  --popover: oklch(0.185 0.009 275);
-  --popover-foreground: oklch(0.965 0.004 275);
+  --background: #0b0d14;
+  --foreground: #eef0f5;
+  --card: #11141c;
+  --card-foreground: #eef0f5;
+  --popover: #141822;
+  --popover-foreground: #eef0f5;
 
-  --primary: oklch(0.565 0.235 277);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.215 0.01 275);
-  --secondary-foreground: oklch(0.965 0.004 275);
-  --muted: oklch(0.205 0.008 275);
-  --muted-foreground: oklch(0.71 0.015 275);
-  --accent: oklch(0.225 0.02 277);
-  --accent-foreground: oklch(0.965 0.004 275);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.66 0.2 277);
+  /* Primary action: off-white with dark text, so the accent stays rare. */
+  --primary: #eef0f5;
+  --primary-foreground: #0b0d14;
+  --secondary: #1a1e28;
+  --secondary-foreground: #eef0f5;
+  --muted: #1a1e28;
+  --muted-foreground: #a3a9b8;
+  --accent: #1a1e28;
+  --accent-foreground: #eef0f5;
+  --destructive: #e5484d;
+  --border: rgb(238 240 245 / 8%);
+  --input: rgb(238 240 245 / 12%);
+  --ring: #f2b544;
 
-  --brand: oklch(0.565 0.235 277);
-  --brand-text: oklch(0.79 0.12 277);
-  --brand-soft: oklch(0.25 0.06 277);
-  --success: oklch(0.74 0.16 155);
-  --warning: oklch(0.82 0.14 80);
+  --brand: #f2b544;
+  --brand-foreground: #1a1405;
+  --brand-text: #f5c56a;
+  --brand-soft: rgb(242 181 68 / 12%);
+  --success: #4cc38a;
+  --warning: #f0883e;
 
-  --chart-1: oklch(0.66 0.2 277);
-  --chart-2: oklch(0.7 0.17 300);
-  --chart-3: oklch(0.74 0.12 185);
-  --chart-4: oklch(0.8 0.14 75);
-  --chart-5: oklch(0.7 0.18 10);
+  --chart-1: #f2b544;
+  --chart-2: #a3a9b8;
+  --chart-3: #7a8296;
+  --chart-4: #4d5568;
+  --chart-5: #2c3240;
 
-  --sidebar: oklch(0.15 0.007 275);
-  --sidebar-foreground: oklch(0.965 0.004 275);
-  --sidebar-primary: oklch(0.565 0.235 277);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.215 0.012 275);
-  --sidebar-accent-foreground: oklch(0.965 0.004 275);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.66 0.2 277);
+  --sidebar: #07080d;
+  --sidebar-foreground: #eef0f5;
+  --sidebar-primary: #eef0f5;
+  --sidebar-primary-foreground: #0b0d14;
+  --sidebar-accent: #1a1e28;
+  --sidebar-accent-foreground: #eef0f5;
+  --sidebar-border: rgb(238 240 245 / 7%);
+  --sidebar-ring: #f2b544;
 }
 
 @layer base {
@@ -178,31 +188,13 @@
 }
 
 @layer utilities {
-  /* Faint grid used behind hero sections */
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
-    background-size: 44px 44px;
+  /* The signature: a highlighter stroke on the exact words the interviewer picked up on. */
+  .highlight {
+    background: linear-gradient(transparent 55%, color-mix(in oklch, var(--brand) 55%, transparent) 55%);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    padding: 0 2px;
   }
-  /* Soft indigo glow */
-  .bg-glow {
-    background: radial-gradient(
-      60% 60% at 50% 0%,
-      color-mix(in oklch, var(--brand) 28%, transparent) 0%,
-      transparent 70%
-    );
-  }
-}
-
-@keyframes orb-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.06); }
-}
-
-@keyframes orb-ring {
-  0% { transform: scale(0.85); opacity: 0.55; }
-  100% { transform: scale(1.6); opacity: 0; }
 }
 
 @keyframes bar {

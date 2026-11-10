@@ -35,7 +35,7 @@ function UserAvatar({ user }: NavUserProps) {
   return (
     <Avatar className="size-8 rounded-lg after:rounded-lg">
       <AvatarImage src={user.image ?? undefined} alt="" referrerPolicy="no-referrer" className="rounded-lg" />
-      <AvatarFallback className="rounded-lg bg-brand-soft text-xs font-medium text-brand-text">
+      <AvatarFallback className="rounded-lg bg-muted text-xs font-medium text-foreground">
         {initials(displayName(user))}
       </AvatarFallback>
     </Avatar>
