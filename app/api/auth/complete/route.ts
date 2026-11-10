@@ -29,7 +29,7 @@ async function complete(request: Request) {
 export async function GET(request: Request) {
   const result = await complete(request)
   if ("error" in result) return NextResponse.redirect(new URL("/sign-in", request.url))
-  if ("conflict" in result) return NextResponse.redirect(new URL("/auth/role-conflict", request.url))
+  if ("conflict" in result) return NextResponse.redirect(new URL("/role-conflict", request.url))
   return NextResponse.redirect(new URL(result.next, request.url))
 }
 

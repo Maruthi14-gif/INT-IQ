@@ -3,6 +3,7 @@ import { z } from "zod"
 import { aiError, apiUserWithRole, jsonError } from "@/lib/api"
 import { completeInterview, getInterview } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { rateLimited } from "@/lib/rate-limit"
 
 export const maxDuration = 60
 
@@ -38,6 +39,8 @@ const coachingSchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, error } = await apiUserWithRole("student")
   if (!user) return error
+  const limited = await rateLimited("interview-finish", user.id)
+  if (limited) return limited
   const { id } = await params
 
   const interview = await getInterview(user.id, id)

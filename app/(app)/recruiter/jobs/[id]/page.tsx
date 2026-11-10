@@ -8,6 +8,7 @@ import { ApplicationStatusBadge, JobStatusBadge, LEVEL_LABEL } from "@/component
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getRecruiterProfile, isApprovedRecruiter } from "@/lib/recruiters"
 import { getRecruiterJob, listApplicants } from "@/lib/recruiting"
 import { requireRole } from "@/lib/session"
 
@@ -38,7 +39,8 @@ async function JobDetail({ params }: Props) {
   const { user } = await requireRole("recruiter")
   const job = await getRecruiterJob(user.id, id)
   if (!job) notFound()
-  const applicants = await listApplicants(user.id, id)
+  const [applicants, recruiter] = await Promise.all([listApplicants(user.id, id), getRecruiterProfile(user.id)])
+  const approved = isApprovedRecruiter(recruiter)
 
   return (
     <>
@@ -69,14 +71,23 @@ async function JobDetail({ params }: Props) {
               Edit
             </Link>
           </Button>
-          <JobActions id={job.id} status={job.status} />
+          <JobActions id={job.id} status={job.status} canPublish={approved} />
         </div>
       </div>
 
-      {job.status === "draft" && (
-        <p className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
-          This job is a draft. Publish it so candidates can find it and apply.
+      {!approved ? (
+        <p className="rounded-xl border border-brand/40 bg-brand-soft px-4 py-3 text-sm" data-testid="approval-needed">
+          You can publish jobs and see applicants once an admin approves your recruiter account.{" "}
+          <Link href="/recruiter" className="font-medium text-brand-text underline-offset-4 hover:underline">
+            Check your approval status
+          </Link>
         </p>
+      ) : (
+        job.status === "draft" && (
+          <p className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+            This job is a draft. Publish it so candidates can find it and apply.
+          </p>
+        )
       )}
 
       <section className="grid gap-4 rounded-2xl border bg-card p-6 md:grid-cols-[1fr_280px]">

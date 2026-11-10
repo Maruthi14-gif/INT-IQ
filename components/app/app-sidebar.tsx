@@ -22,9 +22,19 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-export function AppSidebar({ user, role = "student" }: { user: ReactNode; role?: UserRole }) {
+export function AppSidebar({
+  user,
+  role = "student",
+  admin,
+}: {
+  user: ReactNode
+  role?: UserRole
+  /** Present only for admins: how many recruiters are waiting for review. */
+  admin?: { pending: number }
+}) {
   const { isMobile } = useSidebar()
-  const nav = navFor(role)
+  const nav = navFor(role, Boolean(admin))
+  const badges: Record<string, number> = admin ? { "/admin/recruiters": admin.pending } : {}
   const recruiter = role === "recruiter"
   const home = recruiter ? "/recruiter" : "/dashboard"
   const subtitle = recruiter ? "Hiring" : "Interview practice"
@@ -54,8 +64,8 @@ export function AppSidebar({ user, role = "student" }: { user: ReactNode; role?:
 
       <SidebarContent>
         {/* The current URL is request data: read it inside Suspense, show the menu without a highlight meanwhile. */}
-        <Suspense fallback={<NavGroups groups={nav} pathname={null} tip={tip} />}>
-          <NavGroupsWithPath groups={nav} tip={tip} />
+        <Suspense fallback={<NavGroups groups={nav} pathname={null} tip={tip} badges={badges} />}>
+          <NavGroupsWithPath groups={nav} tip={tip} badges={badges} />
         </Suspense>
       </SidebarContent>
 
@@ -67,11 +77,13 @@ export function AppSidebar({ user, role = "student" }: { user: ReactNode; role?:
 
 type Tip = (label: string) => string | undefined
 
-function NavGroupsWithPath({ groups, tip }: { groups: NavGroup[]; tip: Tip }) {
-  return <NavGroups groups={groups} pathname={usePathname()} tip={tip} />
+type Badges = Record<string, number>
+
+function NavGroupsWithPath({ groups, tip, badges }: { groups: NavGroup[]; tip: Tip; badges: Badges }) {
+  return <NavGroups groups={groups} pathname={usePathname()} tip={tip} badges={badges} />
 }
 
-function NavGroups({ groups, pathname, tip }: { groups: NavGroup[]; pathname: string | null; tip: Tip }) {
+function NavGroups({ groups, pathname, tip, badges }: { groups: NavGroup[]; pathname: string | null; tip: Tip; badges: Badges }) {
   return (
     <>
         {groups.map((group) => (
@@ -94,12 +106,22 @@ function NavGroups({ groups, pathname, tip }: { groups: NavGroup[]; pathname: st
                           </SidebarMenuBadge>
                         </>
                       ) : (
-                        <SidebarMenuButton asChild isActive={active} tooltip={tip(item.title)}>
-                          <Link href={item.href}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
+                        <>
+                          <SidebarMenuButton asChild isActive={active} tooltip={tip(item.title)}>
+                            <Link href={item.href}>
+                              <item.icon />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                          {(badges[item.href] ?? 0) > 0 && (
+                            <SidebarMenuBadge
+                              className="rounded-full bg-brand px-1.5 font-mono text-[11px] text-brand-foreground tabular-nums"
+                              aria-label={`${badges[item.href]} waiting`}
+                            >
+                              {badges[item.href]}
+                            </SidebarMenuBadge>
+                          )}
+                        </>
                       )}
                     </SidebarMenuItem>
                   )

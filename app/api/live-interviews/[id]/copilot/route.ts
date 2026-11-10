@@ -2,6 +2,7 @@ import { z } from "zod"
 import { draftLiveEvaluation, buildCopilotPlan, suggestCopilotFollowUps } from "@/lib/ai/copilot"
 import { aiError, apiUser, jsonError } from "@/lib/api"
 import { getLiveInterviewForUser, saveCopilotPlan } from "@/lib/live-interviews"
+import { rateLimited } from "@/lib/rate-limit"
 
 const body = z.object({ action: z.enum(["plan", "suggestions", "evaluation-draft"]) })
 
@@ -15,6 +16,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const room = await getLiveInterviewForUser(user.id, id)
   if (!room) return jsonError(404, "Live interview room not found.")
   if (room.role !== "recruiter") return jsonError(403, "The Copilot is available only to the recruiter.")
+  const limited = await rateLimited("copilot", user.id)
+  if (limited) return limited
 
   const input = {
     candidateName: room.candidate.name?.trim() || room.candidate.email,

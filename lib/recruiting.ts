@@ -1,5 +1,5 @@
 import "server-only"
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, count, desc, eq, exists, inArray, sql, type Column } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { authUsers } from "@/lib/db/neon-auth"
 import { withRetry } from "@/lib/db/retry"
@@ -10,6 +10,7 @@ import {
   jobs,
   liveInterviewSessions,
   profiles,
+  recruiterProfiles,
   type ApplicationStatus,
   type ExperienceLevel,
   type InterviewType,
@@ -23,6 +24,18 @@ import {
  */
 
 const isUuid = (id: string) => /^[0-9a-f-]{36}$/i.test(id)
+
+/**
+ * Candidate data (applicants, their resumes, reports) is only visible to recruiters an
+ * admin has approved. Checked inside the queries, so no route can forget it.
+ */
+const approvedRecruiter = (recruiterId: Column) =>
+  exists(
+    db
+      .select({ one: sql`1` })
+      .from(recruiterProfiles)
+      .where(and(eq(recruiterProfiles.userId, recruiterId), eq(recruiterProfiles.status, "approved"))),
+  )
 
 /* ── Jobs (recruiter) ───────────────────────────────────────── */
 
@@ -123,7 +136,7 @@ export async function listApplicants(recruiterId: string, jobId: string) {
       .innerJoin(authUsers, eq(authUsers.id, applications.candidateId))
       .leftJoin(profiles, eq(profiles.userId, applications.candidateId))
       .leftJoin(invitations, eq(invitations.applicationId, applications.id))
-      .where(eq(applications.jobId, jobId))
+      .where(and(eq(applications.jobId, jobId), approvedRecruiter(jobs.recruiterId)))
       .groupBy(applications.id, authUsers.name, authUsers.email, profiles.targetRole, profiles.experienceLevel, profiles.resumeText)
       .orderBy(desc(applications.createdAt)),
   )
@@ -141,7 +154,7 @@ export async function getApplicationForRecruiter(recruiterId: string, applicatio
       .innerJoin(jobs, and(eq(jobs.id, applications.jobId), eq(jobs.recruiterId, recruiterId)))
       .innerJoin(authUsers, eq(authUsers.id, applications.candidateId))
       .leftJoin(profiles, eq(profiles.userId, applications.candidateId))
-      .where(eq(applications.id, applicationId))
+      .where(and(eq(applications.id, applicationId), approvedRecruiter(jobs.recruiterId)))
       .limit(1),
   )
   if (!row) return null
@@ -179,7 +192,7 @@ export async function updateApplication(
     .select({ id: applications.id })
     .from(applications)
     .innerJoin(jobs, and(eq(jobs.id, applications.jobId), eq(jobs.recruiterId, recruiterId)))
-    .where(eq(applications.id, applicationId))
+    .where(and(eq(applications.id, applicationId), approvedRecruiter(jobs.recruiterId)))
   const [row] = await db.update(applications).set(data).where(inArray(applications.id, owned)).returning()
   return row ?? null
 }
@@ -194,7 +207,7 @@ export async function getInterviewForRecruiter(recruiterId: string, interviewId:
       .innerJoin(applications, eq(applications.id, interviews.applicationId))
       .innerJoin(jobs, and(eq(jobs.id, applications.jobId), eq(jobs.recruiterId, recruiterId)))
       .innerJoin(authUsers, eq(authUsers.id, interviews.userId))
-      .where(eq(interviews.id, interviewId))
+      .where(and(eq(interviews.id, interviewId), approvedRecruiter(jobs.recruiterId)))
       .limit(1),
   )
   return row ?? null
@@ -209,30 +222,33 @@ export async function createInvitation(
 ) {
   const app = await getApplicationForRecruiter(recruiterId, applicationId)
   if (!app) return null
-  const [row] = await db
-    .insert(invitations)
-    .values({
-      applicationId,
-      kind: data.kind,
-      interviewType: data.interviewType ?? null,
-      totalQuestions: data.totalQuestions ?? null,
-      scheduledAt: data.scheduledAt ?? null,
-      message: data.message ?? null,
-    })
-    .returning()
-  if (data.kind === "live") {
-    await db.insert(liveInterviewSessions).values({
-      invitationId: row.id,
-      applicationId: app.application.id,
-      recruiterId: app.job.recruiterId,
-      candidateId: app.application.candidateId,
-    })
-  }
-  // Inviting moves the application forward.
-  if (app.application.status === "applied" || app.application.status === "reviewing") {
-    await db.update(applications).set({ status: "interviewing" }).where(eq(applications.id, applicationId))
-  }
-  return row
+  // The invitation, its live room and the status change land together or not at all.
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(invitations)
+      .values({
+        applicationId,
+        kind: data.kind,
+        interviewType: data.interviewType ?? null,
+        totalQuestions: data.totalQuestions ?? null,
+        scheduledAt: data.scheduledAt ?? null,
+        message: data.message ?? null,
+      })
+      .returning()
+    if (data.kind === "live") {
+      await tx.insert(liveInterviewSessions).values({
+        invitationId: row.id,
+        applicationId: app.application.id,
+        recruiterId: app.job.recruiterId,
+        candidateId: app.application.candidateId,
+      })
+    }
+    // Inviting moves the application forward.
+    if (app.application.status === "applied" || app.application.status === "reviewing") {
+      await tx.update(applications).set({ status: "interviewing" }).where(eq(applications.id, applicationId))
+    }
+    return row
+  })
 }
 
 /* ── Candidate side ─────────────────────────────────────────── */
@@ -349,7 +365,3 @@ export async function attachInterviewToInvitation(invitationId: string, intervie
   await db.update(invitations).set({ interviewId, status: "accepted" }).where(eq(invitations.id, invitationId))
 }
 
-/** Called when an invited AI interview completes. */
-export async function completeInvitationForInterview(interviewId: string) {
-  await db.update(invitations).set({ status: "completed" }).where(eq(invitations.interviewId, interviewId))
-}

@@ -1,5 +1,6 @@
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 import type { IntegrityLog } from "../integrity"
+import { COMPANY_INDUSTRIES, COMPANY_SIZES, type CompanyIndustry, type CompanySize } from "../company-options"
 import { authUsers } from "./neon-auth"
 
 /* ─────────────────────────────────────────────────────────────
@@ -45,6 +46,131 @@ export const profiles = pgTable("profiles", {
 })
 
 export type Profile = typeof profiles.$inferSelect
+
+/* ── Recruiter verification ─────────────────────────────────── */
+
+export const RECRUITER_STATUSES = ["pending", "approved", "rejected"] as const
+export type RecruiterStatus = (typeof RECRUITER_STATUSES)[number]
+
+/** What the automatic email check found when the recruiter asked for approval. Admins only. */
+export type RecruiterEmailCheck = {
+  domain: string
+  /** Gmail, Yahoo, Outlook and other personal mail. */
+  freeMail: boolean
+  /** A throwaway inbox (Kickbox Open). Null when the check couldn't run. */
+  disposable: boolean | null
+  /** The email domain belongs to the company website. Null without a website. */
+  matchesWebsite: boolean | null
+  /** The sign-in proved the person owns this address (Google or email code). Missing on older checks. */
+  verified?: boolean
+  checkedAt: string
+}
+
+/* ── Companies ──────────────────────────────────────────────── */
+
+// Kept in a file without database code so the browser form can import the lists too.
+export { COMPANY_INDUSTRIES, COMPANY_SIZES, type CompanyIndustry, type CompanySize }
+
+/** Facts INT-IQ checked about a company on the open internet. Re-run each time a recruiter submits it. */
+export type CompanyCheck = {
+  domain: string
+  /** The domain resolves in DNS or is registered (RDAP). False means no such company website. */
+  domainExists: boolean
+  website: { reachable: boolean; status: number | null; title: string | null }
+  /** From RDAP (the domain registry). Null when the registry didn't say. */
+  domainRegisteredAt: string | null
+  /** The domain has mail servers (MX), as a real business usually does. */
+  mailServer: boolean | null
+  /** The website's title or text mentions the company name. */
+  nameOnWebsite: boolean | null
+  /** A public record (Wikidata) whose official website is this domain. */
+  publicRecord: { id: string; label: string } | null
+  /** Indian GST number, if given: check digit and, with GSTIN_API_KEY, the registry. */
+  gst: {
+    gstin: string
+    formatValid: boolean
+    registry: { status: string; legalName: string; nameMatches: boolean } | null
+  } | null
+  checkedAt: string
+}
+
+/**
+ * One row per company, keyed by its web domain, shared by every recruiter from that company.
+ * Candidates will see this profile on job pages.
+ */
+export const companies = pgTable(
+  "companies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** Registrable domain, lower case, e.g. "infosys.com". */
+    domain: text("domain").notNull(),
+    website: text("website").notNull(),
+    industry: text("industry", { enum: COMPANY_INDUSTRIES }),
+    size: text("size", { enum: COMPANY_SIZES }),
+    headquarters: text("headquarters"),
+    linkedinUrl: text("linkedin_url"),
+    gstin: text("gstin"),
+    about: text("about"),
+    check: jsonb("check").$type<CompanyCheck>(),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => authUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [uniqueIndex("companies_domain_idx").on(t.domain)],
+)
+
+export type Company = typeof companies.$inferSelect
+
+/**
+ * Recruiter verification, one row per recruiter account. A recruiter can draft jobs right
+ * away; publishing jobs and seeing candidates waits until an admin approves them.
+ */
+export const recruiterProfiles = pgTable(
+  "recruiter_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    status: text("status", { enum: RECRUITER_STATUSES }).default("pending").notNull(),
+    /** The company this recruiter hires for, once they've sent its details. */
+    companyId: uuid("company_id").references(() => companies.id, { onDelete: "set null" }),
+    /** What the recruiter typed, kept as submitted. The checked profile lives in `companies`. */
+    companyName: text("company_name"),
+    companyWebsite: text("company_website"),
+    jobTitle: text("job_title"),
+    linkedinUrl: text("linkedin_url"),
+    /** Anything the recruiter wants the reviewer to know. */
+    note: text("note"),
+    emailCheck: jsonb("email_check").$type<RecruiterEmailCheck>(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: uuid("reviewed_by").references(() => authUsers.id, { onDelete: "set null" }),
+    /** Shown to the recruiter when a request is declined. */
+    reviewNote: text("review_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("recruiter_profiles_status_idx").on(t.status, t.submittedAt), index("recruiter_profiles_company_idx").on(t.companyId)],
+)
+
+export type RecruiterProfile = typeof recruiterProfiles.$inferSelect
+
+/* ── Rate limits ────────────────────────────────────────────── */
+
+/** Fixed-window request counters, one row per user and action, so nobody can drain the AI quota. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).defaultNow().notNull(),
+  count: integer("count").default(0).notNull(),
+})
 
 /* ── Interviews ─────────────────────────────────────────────── */
 

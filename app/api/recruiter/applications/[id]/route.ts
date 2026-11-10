@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { apiUserWithRole, jsonError } from "@/lib/api"
+import { apiApprovedRecruiter, jsonError } from "@/lib/api"
 import { APPLICATION_STATUSES } from "@/lib/db/schema"
 import { updateApplication } from "@/lib/recruiting"
 
@@ -12,7 +12,7 @@ const patch = z
 
 /** Recruiter updates an applicant's status (shortlist, reject…) or private notes. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await apiUserWithRole("recruiter")
+  const { user, error } = await apiApprovedRecruiter()
   if (!user) return error
   const { id } = await params
 

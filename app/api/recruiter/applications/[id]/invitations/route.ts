@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { apiUserWithRole, jsonError } from "@/lib/api"
+import { apiApprovedRecruiter, jsonError } from "@/lib/api"
 import { INTERVIEW_TYPES } from "@/lib/db/schema"
 import { createInvitation } from "@/lib/recruiting"
 
@@ -19,7 +19,7 @@ const body = z.discriminatedUnion("kind", [
 
 /** Recruiter invites the applicant to an AI interview or schedules a live one. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, error } = await apiUserWithRole("recruiter")
+  const { user, error } = await apiApprovedRecruiter()
   if (!user) return error
   const { id } = await params
 

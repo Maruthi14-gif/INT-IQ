@@ -4,6 +4,7 @@ import { aiError, apiUserWithRole, firstName, jsonError } from "@/lib/api"
 import { INTERVIEW_MODES, INTERVIEW_TYPES } from "@/lib/db/schema"
 import { createInterview } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { rateLimited } from "@/lib/rate-limit"
 import { attachInterviewToInvitation, getMyInvitation } from "@/lib/recruiting"
 import { isVoiceConfigured } from "@/lib/vapi"
 
@@ -21,6 +22,8 @@ const body = z.object({
 export async function POST(request: Request) {
   const { user, error } = await apiUserWithRole("student")
   if (!user) return error
+  const limited = await rateLimited("interview-start", user.id)
+  if (limited) return limited
 
   const parsed = body.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError(400, "Pick a round and number of questions.")

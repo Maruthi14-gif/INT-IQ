@@ -158,7 +158,7 @@ export function SignInForm() {
       const completion = await fetch(`/api/auth/complete?next=${encodeURIComponent(nextPath())}`, { method: "POST" })
       const data = await completion.json().catch(() => ({}))
       if (completion.status === 409) {
-        router.replace("/auth/role-conflict")
+        router.replace("/role-conflict")
         router.refresh()
         return
       }

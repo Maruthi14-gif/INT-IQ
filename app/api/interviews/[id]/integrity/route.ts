@@ -33,7 +33,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const interview = await getInterview(user.id, id)
   if (!interview) return jsonError(404, "Interview not found.")
+  if (interview.status === "completed") return jsonError(409, "This interview has finished, so its integrity record is locked.")
 
-  await saveIntegritySession(user.id, id, parsed.data.sessionId, parsed.data.session)
+  const saved = await saveIntegritySession(user.id, id, parsed.data.sessionId, parsed.data.session)
+  if (!saved) return jsonError(409, "This interview has finished, so its integrity record is locked.")
   return new Response(null, { status: 204 })
 }

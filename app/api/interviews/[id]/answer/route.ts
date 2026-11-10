@@ -3,6 +3,7 @@ import { buildReport, nextQuestion } from "@/lib/ai/interviewer"
 import { aiError, apiUserWithRole, firstName, jsonError } from "@/lib/api"
 import { completeInterview, getInterview, saveTurns } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { rateLimited } from "@/lib/rate-limit"
 
 export const maxDuration = 60
 
@@ -16,6 +17,8 @@ const body = z.object({ answer: z.string().max(6000) })
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, error } = await apiUserWithRole("student")
   if (!user) return error
+  const limited = await rateLimited("interview-answer", user.id)
+  if (limited) return limited
   const { id } = await params
 
   const parsed = body.safeParse(await request.json().catch(() => null))

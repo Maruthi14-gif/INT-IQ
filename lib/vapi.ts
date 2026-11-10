@@ -81,6 +81,14 @@ export function isLoopbackVoiceUrl(baseUrl: string) {
   }
 }
 
+/**
+ * Local voice testing: a saved Vapi assistant runs the call because Vapi can't reach
+ * localhost, and the browser mirrors transcript turns into the interview. Never true in production.
+ */
+export function isLocalVoiceFallback(requestUrl: string) {
+  return Boolean(vapiAssistantId()) && isLoopbackVoiceUrl(voiceAgentBaseUrl(requestUrl))
+}
+
 export function buildVoiceAssistant(input: {
   interviewId: string
   firstMessage: string

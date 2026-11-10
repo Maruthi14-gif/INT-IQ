@@ -5,6 +5,7 @@ import { firstName } from "@/lib/api"
 import type { InterviewTurn } from "@/lib/db/schema"
 import { getInterviewForVoiceAgent, saveTurns, saveTurnsIfUnchanged } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { rateLimited } from "@/lib/rate-limit"
 import { CLOSING_LINE, verifyVoiceAgentToken } from "@/lib/vapi"
 import { isVisualCoachingMessage } from "@/lib/visual-coaching"
 
@@ -31,6 +32,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     out.send(text)
     return out.end()
   }
+
+  // Counted per interview: Vapi calls this once per spoken turn.
+  if (await rateLimited("voice-agent", id)) return say("We've reached the limit for this call. Please finish the interview by typing in the app.")
 
   const row = await getInterviewForVoiceAgent(id)
   if (!row) return say("Sorry, I couldn't find this interview. Please restart it from the app.")

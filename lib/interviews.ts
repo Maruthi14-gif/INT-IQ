@@ -99,24 +99,32 @@ export async function saveTurnsIfUnchanged(userId: string, id: string, expected:
   return rows.length > 0
 }
 
-/** Stores one browser session's anti-cheat counts; other sessions of the interview are kept. */
+/**
+ * Stores one browser session's anti-cheat counts; other sessions of the interview are kept.
+ * Only while the interview is in progress: a finished interview's record is locked.
+ * Returns false when nothing was saved.
+ */
 export async function saveIntegritySession(userId: string, id: string, sessionId: string, session: IntegritySession) {
-  await db
+  const rows = await db
     .update(interviews)
     .set({
       integrity: sql`jsonb_set(coalesce(${interviews.integrity}, '{"sessions":{}}'::jsonb), ${`{sessions,${sessionId}}`}::text[], ${JSON.stringify(session)}::jsonb, true)`,
     })
-    .where(and(eq(interviews.id, id), eq(interviews.userId, userId)))
+    .where(and(eq(interviews.id, id), eq(interviews.userId, userId), eq(interviews.status, "in_progress")))
+    .returning({ id: interviews.id })
+  return rows.length > 0
 }
 
 export async function completeInterview(userId: string, id: string, turns: InterviewTurn[], report: InterviewReport) {
-  const [row] = await db
-    .update(interviews)
-    .set({ turns, report, overallScore: report.overallScore, status: "completed", completedAt: new Date() })
-    .where(and(eq(interviews.id, id), eq(interviews.userId, userId)))
-    .returning({ applicationId: interviews.applicationId })
-  // An invited interview: tell the recruiter's side it's done.
-  if (row?.applicationId) await db.update(invitations).set({ status: "completed" }).where(eq(invitations.interviewId, id))
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(interviews)
+      .set({ turns, report, overallScore: report.overallScore, status: "completed", completedAt: new Date() })
+      .where(and(eq(interviews.id, id), eq(interviews.userId, userId)))
+      .returning({ applicationId: interviews.applicationId })
+    // An invited interview: tell the recruiter's side it's done, in the same transaction.
+    if (row?.applicationId) await tx.update(invitations).set({ status: "completed" }).where(eq(invitations.interviewId, id))
+  })
 }
 
 export async function listInterviews(userId: string, limit = 50) {

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import { AppSidebar } from "@/components/app/app-sidebar"
+import { isAdmin } from "@/lib/admin"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { pendingRecruiterCount } from "@/lib/recruiters"
 import { getSession } from "@/lib/session"
 
 /**
@@ -11,7 +13,8 @@ import { getSession } from "@/lib/session"
 export async function RoleSidebar({ user }: { user: ReactNode }) {
   const session = await getSession()
   const role = session ? (await getOrCreateProfile(session.user.id)).role : "student"
-  return <AppSidebar user={user} role={role} />
+  const admin = session && isAdmin(session.user) ? { pending: await pendingRecruiterCount() } : undefined
+  return <AppSidebar user={user} role={role} admin={admin} />
 }
 
 export function RoleSidebarFallback({ user }: { user: ReactNode }) {

@@ -10,6 +10,7 @@ import {
   liveInterviewSessions,
   liveInterviewSignals,
   profiles,
+  recruiterProfiles,
   type CopilotPlan,
   type LiveInterviewEvaluation,
   type LiveInterviewSignal,
@@ -40,10 +41,15 @@ export async function getLiveInterviewForUser(userId: string, sessionId: string)
       .innerJoin(jobs, eq(jobs.id, applications.jobId))
       .innerJoin(authUsers, eq(authUsers.id, liveInterviewSessions.candidateId))
       .leftJoin(profiles, eq(profiles.userId, liveInterviewSessions.candidateId))
+      .leftJoin(recruiterProfiles, eq(recruiterProfiles.userId, liveInterviewSessions.recruiterId))
       .where(
         and(
           eq(liveInterviewSessions.id, sessionId),
-          or(eq(liveInterviewSessions.recruiterId, userId), eq(liveInterviewSessions.candidateId, userId)),
+          // The recruiter side needs an approved recruiter account.
+          or(
+            and(eq(liveInterviewSessions.recruiterId, userId), eq(recruiterProfiles.status, "approved")),
+            eq(liveInterviewSessions.candidateId, userId),
+          ),
         ),
       )
       .limit(1),
@@ -70,10 +76,14 @@ export async function ensureLiveInterviewForInvitation(userId: string, invitatio
       .from(invitations)
       .innerJoin(applications, eq(applications.id, invitations.applicationId))
       .innerJoin(jobs, eq(jobs.id, applications.jobId))
+      .leftJoin(recruiterProfiles, eq(recruiterProfiles.userId, jobs.recruiterId))
       .where(
         and(
           eq(invitations.id, invitationId),
-          or(eq(applications.candidateId, userId), eq(jobs.recruiterId, userId)),
+          or(
+            eq(applications.candidateId, userId),
+            and(eq(jobs.recruiterId, userId), eq(recruiterProfiles.status, "approved")),
+          ),
         ),
       )
       .limit(1),
@@ -158,10 +168,10 @@ export async function completeLiveInterview(userId: string, sessionId: string) {
   const room = await getLiveInterviewForUser(userId, sessionId)
   if (!room || room.role !== "recruiter") return null
   const now = new Date()
-  await Promise.all([
-    db.update(liveInterviewSessions).set({ status: "completed", completedAt: now }).where(eq(liveInterviewSessions.id, sessionId)),
-    db.update(invitations).set({ status: "completed" }).where(eq(invitations.id, room.invitation.id)),
-  ])
+  await db.transaction(async (tx) => {
+    await tx.update(liveInterviewSessions).set({ status: "completed", completedAt: now }).where(eq(liveInterviewSessions.id, sessionId))
+    await tx.update(invitations).set({ status: "completed" }).where(eq(invitations.id, room.invitation.id))
+  })
   return true
 }
 

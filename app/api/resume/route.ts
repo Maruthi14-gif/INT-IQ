@@ -1,18 +1,31 @@
-import { extractText } from "unpdf"
+import { extractText, getDocumentProxy } from "unpdf"
 import { analyzeResume } from "@/lib/ai/interviewer"
 import { isAiConfigured } from "@/lib/ai/model"
 import { apiUserWithRole, jsonError } from "@/lib/api"
 import { EXPERIENCE_LEVELS, type ExperienceLevel, type ResumeInsights } from "@/lib/db/schema"
 import { getOrCreateProfile, saveResume } from "@/lib/profiles"
+import { rateLimited } from "@/lib/rate-limit"
 
 export const maxDuration = 60
 
 const MAX_BYTES = 4 * 1024 * 1024
+/** A resume is a page or two; a huge PDF is a mistake or an attack on the parser. */
+const MAX_PAGES = 15
+const PARSE_TIMEOUT_MS = 15_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("PDF parsing timed out")), ms)),
+  ])
+}
 
 /** Save target role + resume (PDF/TXT upload or pasted text) and analyze it with AI. */
 export async function POST(request: Request) {
   const { user, error } = await apiUserWithRole("student")
   if (!user) return error
+  const limited = await rateLimited("resume", user.id)
+  if (limited) return limited
 
   const form = await request.formData()
   const targetRole = String(form.get("targetRole") ?? "").trim().slice(0, 80)
@@ -33,7 +46,11 @@ export async function POST(request: Request) {
     const name = file.name.toLowerCase()
     try {
       if (name.endsWith(".pdf") || file.type === "application/pdf") {
-        const { text } = await extractText(new Uint8Array(await file.arrayBuffer()), { mergePages: true })
+        const pdf = await withTimeout(getDocumentProxy(new Uint8Array(await file.arrayBuffer())), PARSE_TIMEOUT_MS)
+        if (pdf.numPages > MAX_PAGES) {
+          return jsonError(400, `That PDF has ${pdf.numPages} pages. Upload a resume of ${MAX_PAGES} pages or fewer.`)
+        }
+        const { text } = await withTimeout(extractText(pdf, { mergePages: true }), PARSE_TIMEOUT_MS)
         resumeText = text
       } else if (name.endsWith(".txt") || file.type.startsWith("text/")) {
         resumeText = await file.text()

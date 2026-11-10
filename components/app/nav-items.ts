@@ -6,6 +6,7 @@ import {
   LayoutDashboardIcon,
   MicIcon,
   SearchIcon,
+  ShieldCheckIcon,
   TargetIcon,
   WandSparklesIcon,
   type LucideIcon,
@@ -59,8 +60,15 @@ const RECRUITER_NAV: NavGroup[] = [
   },
 ]
 
-export function navFor(role: UserRole): NavGroup[] {
-  return role === "recruiter" ? RECRUITER_NAV : STUDENT_NAV
+/** Shown to admins (ADMIN_EMAILS) in addition to their own role's menu. */
+const ADMIN_NAV: NavGroup = {
+  label: "Admin",
+  items: [{ title: "Recruiter approvals", href: "/admin/recruiters", icon: ShieldCheckIcon }],
+}
+
+export function navFor(role: UserRole, admin = false): NavGroup[] {
+  const base = role === "recruiter" ? RECRUITER_NAV : STUDENT_NAV
+  return admin ? [...base, ADMIN_NAV] : base
 }
 
 /** Kept for existing imports. */
@@ -69,7 +77,7 @@ export const NAV_GROUPS = STUDENT_NAV
 export function titleForPath(pathname: string) {
   // Longest matching href wins, so /recruiter/jobs shows "Jobs", not "Dashboard".
   let best: NavItem | null = null
-  for (const group of [...STUDENT_NAV, ...RECRUITER_NAV]) {
+  for (const group of [...STUDENT_NAV, ...RECRUITER_NAV, ADMIN_NAV]) {
     for (const item of group.items) {
       const match = pathname === item.href || pathname.startsWith(item.href + "/")
       if (match && (!best || item.href.length > best.href.length)) best = item

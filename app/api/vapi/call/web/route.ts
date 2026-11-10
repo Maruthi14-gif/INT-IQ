@@ -2,10 +2,11 @@ import { nextQuestion } from "@/lib/ai/interviewer"
 import { aiError, apiUser, firstName, jsonError } from "@/lib/api"
 import { getInterview, saveTurns } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { rateLimited } from "@/lib/rate-limit"
 import {
   buildVoiceAssistant,
+  isLocalVoiceFallback,
   isVoiceConfigured,
-  isLoopbackVoiceUrl,
   VAPI_API,
   vapiAssistantId,
   vapiPublicKey,
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
   const user = await apiUser()
   if (!user) return jsonError(401, "Please sign in again.")
   if (!isVoiceConfigured()) return jsonError(503, "Voice interviews aren't set up yet (missing VAPI_PUBLIC_KEY).")
+  const limited = await rateLimited("voice-call", user.id)
+  if (limited) return limited
 
   const body = await request.json().catch(() => ({}))
   const interviewId = String(body?.assistantOverrides?.metadata?.interviewId ?? "")
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
   const current = turns.at(-1)!.question
   const assistantId = vapiAssistantId()
   const baseUrl = voiceAgentBaseUrl(request.url)
-  const localFallback = Boolean(assistantId) && isLoopbackVoiceUrl(baseUrl)
+  const localFallback = isLocalVoiceFallback(request.url)
   const assistant = buildVoiceAssistant({
     interviewId: interview.id,
     firstMessage: answered > 0 ? `Welcome back, let's pick up where we left off. ${current}` : current,

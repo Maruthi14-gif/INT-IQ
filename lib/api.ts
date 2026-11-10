@@ -1,7 +1,9 @@
 import "server-only"
+import { isAdmin } from "@/lib/admin"
 import { AiNotConfiguredError } from "@/lib/ai/model"
 import type { UserRole } from "@/lib/db/schema"
 import { getOrCreateProfile } from "@/lib/profiles"
+import { getRecruiterProfile } from "@/lib/recruiters"
 import { getSession } from "@/lib/session"
 
 export function jsonError(status: number, error: string) {
@@ -21,6 +23,32 @@ export async function apiUserWithRole(role: UserRole) {
   const profile = await getOrCreateProfile(user.id)
   if (!profile.roleChosen || profile.role !== role) return { user: null, error: jsonError(403, "You don't have access to this.") }
   return { user, profile, error: null }
+}
+
+/**
+ * A recruiter an admin has approved. Pending or declined recruiters get a 403 that says why;
+ * they can still draft jobs through apiUserWithRole("recruiter").
+ */
+export async function apiApprovedRecruiter() {
+  const result = await apiUserWithRole("recruiter")
+  if (!result.user) return { user: null, error: result.error }
+  const recruiter = await getRecruiterProfile(result.user.id)
+  if (recruiter.status !== "approved") {
+    const reason =
+      recruiter.status === "rejected"
+        ? "Your recruiter account wasn't approved. Your dashboard shows why and how to ask again."
+        : "Your recruiter account is waiting for approval. You can keep drafting jobs meanwhile."
+    return { user: null, error: jsonError(403, reason) }
+  }
+  return { user: result.user, profile: result.profile, recruiter, error: null }
+}
+
+/** Admin-only routes answer 404 to everyone else. */
+export async function apiAdmin() {
+  const user = await apiUser()
+  if (!user) return { user: null, error: jsonError(401, "Please sign in again.") }
+  if (!isAdmin(user)) return { user: null, error: jsonError(404, "Not found.") }
+  return { user, error: null }
 }
 
 export function firstName(user: { name?: string | null; email: string }) {

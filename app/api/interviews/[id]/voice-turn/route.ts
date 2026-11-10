@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { apiUserWithRole, jsonError } from "@/lib/api"
 import { getInterview, saveTurns } from "@/lib/interviews"
-import { CLOSING_LINE } from "@/lib/vapi"
+import { CLOSING_LINE, isLocalVoiceFallback } from "@/lib/vapi"
 import { isVisualCoachingMessage } from "@/lib/visual-coaching"
 
 const bodySchema = z.object({
@@ -17,11 +17,14 @@ const bodySchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, error } = await apiUserWithRole("student")
   if (!user) return error
+  // Otherwise a candidate could write the interviewer's questions into their own interview.
+  if (!isLocalVoiceFallback(request.url)) return jsonError(403, "Transcript turns are saved by the voice service, not the browser.")
   const parsed = bodySchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError(400, "Invalid voice transcript turn.")
   const { id } = await params
   const interview = await getInterview(user.id, id)
   if (!interview) return jsonError(404, "Interview not found.")
+  if (interview.mode !== "voice") return jsonError(403, "This interview isn't a voice interview.")
   if (interview.status === "completed") return Response.json({ done: true })
 
   const { role, text } = parsed.data

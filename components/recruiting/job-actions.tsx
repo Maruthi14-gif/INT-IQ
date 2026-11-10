@@ -7,8 +7,8 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import type { JobStatus } from "@/lib/db/schema"
 
-/** Publish / close / reopen a job. */
-export function JobActions({ id, status }: { id: string; status: JobStatus }) {
+/** Publish / close / reopen a job. Publishing waits for recruiter approval. */
+export function JobActions({ id, status, canPublish = true }: { id: string; status: JobStatus; canPublish?: boolean }) {
   const router = useRouter()
   const [busy, setBusy] = useState<JobStatus | null>(null)
 
@@ -35,7 +35,12 @@ export function JobActions({ id, status }: { id: string; status: JobStatus }) {
   return (
     <div className="flex flex-wrap gap-2">
       {status !== "open" && (
-        <Button onClick={() => setStatus("open")} disabled={busy !== null} className="h-10 px-4">
+        <Button
+          onClick={() => setStatus("open")}
+          disabled={busy !== null || !canPublish}
+          title={canPublish ? undefined : "Available after your recruiter account is approved"}
+          className="h-10 px-4"
+        >
           {busy === "open" && <Loader2Icon className="animate-spin" />}
           {status === "closed" ? "Reopen job" : "Publish job"}
         </Button>
