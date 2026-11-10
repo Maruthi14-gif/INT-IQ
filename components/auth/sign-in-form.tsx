@@ -232,11 +232,11 @@ export function SignInForm() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -16 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="space-y-7"
+          className="space-y-5"
         >
           <div className="space-y-2">
-            <h1 className="text-3xl font-medium">Choose your workspace</h1>
-            <p className="text-muted-foreground">Select how you&rsquo;ll use INT-IQ. This choice is saved to your account.</p>
+            <h1 className="text-2xl font-medium">Choose your workspace</h1>
+            <p className="text-sm text-muted-foreground">Select how you&rsquo;ll use INT-IQ. This choice is saved to your account.</p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Choose your workspace">
@@ -252,15 +252,17 @@ export function SignInForm() {
                 }}
                 whileTap={{ scale: 0.985 }}
                 className={cn(
-                  "min-h-36 rounded-2xl border p-4 text-left transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+                  "flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
                   role === optionRole ? "border-brand bg-brand-soft/60 ring-3 ring-brand/20" : "bg-card hover:bg-accent/50",
                 )}
               >
-                <span className={cn("grid size-9 place-items-center rounded-xl border", role === optionRole ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground")}>
+                <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg border", role === optionRole ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground")}>
                   <Icon className="size-4" />
                 </span>
-                <span className="mt-3 block text-sm font-semibold">{title}</span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{description}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{title}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{description}</span>
+                </span>
               </motion.button>
             ))}
           </div>
@@ -268,7 +270,7 @@ export function SignInForm() {
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full gap-3 text-[15px]"
+            className="h-11 w-full gap-3 text-[15px]"
             onClick={continueWithGoogle}
             disabled={!role || googleLoading}
           >
@@ -298,7 +300,7 @@ export function SignInForm() {
                 }}
                 aria-invalid={Boolean(error)}
                 aria-describedby={error ? "email-error" : undefined}
-                className="h-12 px-3.5 text-[15px] md:text-[15px]"
+                className="h-11 px-3.5 text-[15px] md:text-[15px]"
               />
               {error && (
                 <p id="email-error" role="alert" className="text-sm text-destructive">
@@ -306,13 +308,13 @@ export function SignInForm() {
                 </p>
               )}
             </div>
-            <Button type="submit" className="h-12 w-full text-[15px]" disabled={!role || sending}>
+            <Button type="submit" className="h-11 w-full text-[15px]" disabled={!role || sending}>
               {sending && <Loader2Icon className="animate-spin" />}
               Continue with email
             </Button>
           </form>
 
-          <p className="text-sm text-muted-foreground">We&rsquo;ll email you a 6-digit code to sign in.</p>
+          <p className="text-xs text-muted-foreground">We&rsquo;ll email you a 6-digit code to sign in.</p>
         </motion.div>
       ) : (
         <motion.div
@@ -321,7 +323,7 @@ export function SignInForm() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 16 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="space-y-7"
+          className="space-y-5"
         >
           <button
             type="button"
@@ -339,7 +341,7 @@ export function SignInForm() {
             <span className="grid size-12 place-items-center rounded-2xl border bg-muted text-muted-foreground">
               <MailCheckIcon className="size-6" />
             </span>
-            <h1 className="text-3xl font-medium">Check your email</h1>
+            <h1 className="text-2xl font-medium">Check your email</h1>
             <p className="text-muted-foreground">
               Enter the 6-digit code we sent to <span className="font-medium text-foreground">{email}</span>
             </p>
@@ -382,7 +384,7 @@ export function SignInForm() {
 
           <Button
             type="button"
-            className="h-12 w-full text-[15px]"
+            className="h-11 w-full text-[15px]"
             onClick={() => verify(otp)}
             disabled={otp.length !== 6 || verifying}
           >

@@ -350,14 +350,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 96px 8% 48px 24px;
+  padding: 88px 8% 32px 24px;
   z-index: 20;
 }
 .lamp-card {
   position: relative;
   width: 100%;
-  max-width: 480px;
-  padding: 40px;
+  max-width: 460px;
+  padding: 32px;
   border-radius: 24px;
   background: rgb(17 20 28 / 72%);
   backdrop-filter: blur(16px) saturate(140%);
