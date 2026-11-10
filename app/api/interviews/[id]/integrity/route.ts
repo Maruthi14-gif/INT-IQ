@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { apiUser, jsonError } from "@/lib/api"
+import { apiUserWithRole, jsonError } from "@/lib/api"
 import { INTEGRITY_FLAGS } from "@/lib/integrity"
 import { getInterview, saveIntegritySession } from "@/lib/interviews"
 
@@ -24,8 +24,8 @@ const bodySchema = z.object({
 
 /** Saves the anti-cheat counts for one browser session of an interview (sent by the interview room). */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
   const { id } = await params
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null))

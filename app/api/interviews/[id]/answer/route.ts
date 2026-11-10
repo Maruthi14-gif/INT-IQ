@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { buildReport, nextQuestion } from "@/lib/ai/interviewer"
-import { aiError, apiUser, firstName, jsonError } from "@/lib/api"
+import { aiError, apiUserWithRole, firstName, jsonError } from "@/lib/api"
 import { completeInterview, getInterview, saveTurns } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
 
@@ -14,8 +14,8 @@ const body = z.object({ answer: z.string().max(6000) })
  * call, so retrying after an AI error never loses it.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
   const { id } = await params
 
   const parsed = body.safeParse(await request.json().catch(() => null))

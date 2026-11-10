@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { apiUser, jsonError } from "@/lib/api"
+import { apiUserWithRole, jsonError } from "@/lib/api"
 import { getInterview, saveTurns } from "@/lib/interviews"
 import { CLOSING_LINE } from "@/lib/vapi"
 import { isVisualCoachingMessage } from "@/lib/visual-coaching"
@@ -15,8 +15,8 @@ const bodySchema = z.object({
  * This endpoint is session-authenticated and never receives camera frames or audio.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
   const parsed = bodySchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError(400, "Invalid voice transcript turn.")
   const { id } = await params

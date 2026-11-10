@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { nextQuestion } from "@/lib/ai/interviewer"
-import { aiError, apiUser, firstName, jsonError } from "@/lib/api"
+import { aiError, apiUserWithRole, firstName, jsonError } from "@/lib/api"
 import { INTERVIEW_MODES, INTERVIEW_TYPES } from "@/lib/db/schema"
 import { createInterview } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
@@ -19,8 +19,8 @@ const body = z.object({
 
 /** Start an interview: create it and ask the first question. */
 export async function POST(request: Request) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
 
   const parsed = body.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return jsonError(400, "Pick a round and number of questions.")

@@ -5,7 +5,8 @@ import { RoleChooser } from "@/components/auth/role-chooser"
 import { Logo } from "@/components/brand/logo"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getOrCreateProfile } from "@/lib/profiles"
-import { requireUser } from "@/lib/session"
+import { homeFor, requireUser } from "@/lib/session"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = { title: "Welcome" }
 
@@ -27,5 +28,6 @@ export default function WelcomePage() {
 async function Chooser() {
   const user = await requireUser()
   const profile = await getOrCreateProfile(user.id)
+  if (profile.roleChosen) redirect(homeFor(profile.role))
   return <RoleChooser firstName={user.name?.trim().split(/\s+/)[0] || null} initialRole={profile.role} />
 }

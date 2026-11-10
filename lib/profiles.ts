@@ -1,8 +1,8 @@
 import "server-only"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { withRetry } from "@/lib/db/retry"
-import { profiles, type ExperienceLevel, type Profile, type ResumeInsights } from "@/lib/db/schema"
+import { profiles, type ExperienceLevel, type Profile, type ResumeInsights, type UserRole } from "@/lib/db/schema"
 
 /**
  * Returns the user's profile, creating it (role "student") on first visit.
@@ -17,6 +17,18 @@ export async function getOrCreateProfile(userId: string): Promise<Profile> {
     const [existing] = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1)
     return existing
   })
+}
+
+/** Assigns the first selected workspace once; a later request cannot change it. */
+export async function chooseInitialRole(userId: string, role: UserRole): Promise<Profile> {
+  const [updated] = await withRetry(() =>
+    db
+      .update(profiles)
+      .set({ role, roleChosen: true })
+      .where(and(eq(profiles.userId, userId), eq(profiles.roleChosen, false)))
+      .returning(),
+  )
+  return updated ?? getOrCreateProfile(userId)
 }
 
 export async function saveResume(

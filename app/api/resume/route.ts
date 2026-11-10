@@ -1,7 +1,7 @@
 import { extractText } from "unpdf"
 import { analyzeResume } from "@/lib/ai/interviewer"
 import { isAiConfigured } from "@/lib/ai/model"
-import { apiUser, jsonError } from "@/lib/api"
+import { apiUserWithRole, jsonError } from "@/lib/api"
 import { EXPERIENCE_LEVELS, type ExperienceLevel, type ResumeInsights } from "@/lib/db/schema"
 import { getOrCreateProfile, saveResume } from "@/lib/profiles"
 
@@ -11,8 +11,8 @@ const MAX_BYTES = 4 * 1024 * 1024
 
 /** Save target role + resume (PDF/TXT upload or pasted text) and analyze it with AI. */
 export async function POST(request: Request) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
 
   const form = await request.formData()
   const targetRole = String(form.get("targetRole") ?? "").trim().slice(0, 80)

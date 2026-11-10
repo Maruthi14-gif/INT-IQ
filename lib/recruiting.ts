@@ -353,9 +353,3 @@ export async function attachInterviewToInvitation(invitationId: string, intervie
 export async function completeInvitationForInterview(interviewId: string) {
   await db.update(invitations).set({ status: "completed" }).where(eq(invitations.interviewId, interviewId))
 }
-
-/* ── Role ───────────────────────────────────────────────────── */
-
-export async function setRole(userId: string, role: "student" | "recruiter") {
-  await db.update(profiles).set({ role, roleChosen: true }).where(eq(profiles.userId, userId))
-}

@@ -7,7 +7,7 @@ test.describe("Sign-in (signed out)", () => {
   test("protected pages send you to sign-in", async ({ page }) => {
     await page.goto("/dashboard")
     await expect(page).toHaveURL(/\/sign-in$/)
-    await expect(page.getByRole("heading", { name: "Welcome to INT-IQ" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Choose your workspace" })).toBeVisible()
     await expectNoHorizontalOverflow(page)
   })
 
@@ -18,6 +18,8 @@ test.describe("Sign-in (signed out)", () => {
       return route.abort()
     })
     await page.goto("/sign-in")
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeDisabled()
+    await page.getByRole("radio", { name: /Candidate/ }).click()
     await page.getByLabel("Email address").fill("not-an-email")
     await page.getByRole("button", { name: "Continue with email" }).click()
     // (Next.js also renders an empty role="alert" route announcer, so match by text.)
@@ -35,6 +37,7 @@ test.describe("Sign-in (signed out)", () => {
     const problems = watchForErrors(page)
 
     await page.goto("/sign-in")
+    await page.getByRole("radio", { name: /Candidate/ }).click()
     await page.getByLabel("Email address").fill("  Student.Test@Example.COM ")
     await page.getByRole("button", { name: "Continue with email" }).click()
 
@@ -63,9 +66,16 @@ test.describe("Sign-in (signed out)", () => {
     expect(problems.filter((p) => !p.includes("400"))).toEqual([])
   })
 
-  test("Continue with Google goes to Google's sign-in", async ({ page }) => {
+  test("Continue with Google starts Google's sign-in", async ({ page }) => {
     await page.goto("/sign-in")
+    await page.getByRole("radio", { name: /Recruiter/ }).click()
+    const authorizationRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url())
+      return url.hostname === "accounts.google.com" && url.pathname.includes("/o/oauth2/")
+    })
     await page.getByRole("button", { name: "Continue with Google" }).click()
+    const request = await authorizationRequest
+    expect(new URL(request.url()).hostname).toBe("accounts.google.com")
     await page.waitForURL(/accounts\.google\.com/, { timeout: 20_000 })
     expect(new URL(page.url()).hostname).toBe("accounts.google.com")
   })

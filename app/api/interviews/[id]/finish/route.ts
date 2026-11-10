@@ -1,6 +1,6 @@
 import { buildReport } from "@/lib/ai/interviewer"
 import { z } from "zod"
-import { aiError, apiUser, jsonError } from "@/lib/api"
+import { aiError, apiUserWithRole, jsonError } from "@/lib/api"
 import { completeInterview, getInterview } from "@/lib/interviews"
 import { getOrCreateProfile } from "@/lib/profiles"
 
@@ -36,8 +36,8 @@ const coachingSchema = z.object({
 
 /** End early: grade the questions answered so far. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
   const { id } = await params
 
   const interview = await getInterview(user.id, id)

@@ -5,11 +5,16 @@ import { expect, type APIRequestContext, type Page } from "@playwright/test"
 export const AUTH_DIR = path.join(__dirname, ".auth")
 export const STORAGE_STATE = path.join(AUTH_DIR, "user.json")
 export const TEST_USER_FILE = path.join(AUTH_DIR, "test-user.json")
+export const TEST_RECRUITER_FILE = path.join(AUTH_DIR, "test-recruiter.json")
 
 export type TestUser = { id: string; email: string; password: string; name: string }
 
 export function readTestUser(): TestUser {
   return JSON.parse(fs.readFileSync(TEST_USER_FILE, "utf8"))
+}
+
+export function readRecruiterTestUser(): TestUser {
+  return JSON.parse(fs.readFileSync(TEST_RECRUITER_FILE, "utf8"))
 }
 
 /** Auth API calls need an Origin header that Neon Auth trusts (the app's own origin). */

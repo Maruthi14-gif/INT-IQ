@@ -1,7 +1,7 @@
 "use client"
 
 import { REGEXP_ONLY_DIGITS } from "input-otp"
-import { ArrowLeftIcon, Loader2Icon, MailCheckIcon } from "lucide-react"
+import { ArrowLeftIcon, BriefcaseBusinessIcon, Loader2Icon, MailCheckIcon, type LucideIcon, UserRoundIcon } from "lucide-react"
 import { AnimatePresence, motion, useAnimationControls } from "motion/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type FormEvent } from "react"
@@ -12,23 +12,25 @@ import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth/client"
-import { runAuth } from "@/lib/auth/errors"
+import { friendlyAuthError, runAuth } from "@/lib/auth/errors"
+import type { UserRole } from "@/lib/db/schema"
+import { cn } from "@/lib/utils"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const RESEND_SECONDS = 30
 
 /** Only allow same-site relative redirects. */
 function safeNext(value: string | null) {
-  // A normal sign-in starts at workspace choice. An explicit same-site `next`
-  // (for example, a protected page the visitor opened) is still honored.
-  if (!value) return "/welcome"
+  // An explicit same-site `next` (for example, a protected page the visitor
+  // opened) is still honored.
+  if (!value) return "/dashboard"
   try {
     // Resolve against this origin: anything that lands elsewhere (like "/\t/evil.com") is refused.
     const url = new URL(value, window.location.origin)
-    if (url.origin !== window.location.origin || !url.pathname.startsWith("/")) return "/welcome"
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/")) return "/dashboard"
     return url.pathname + url.search + url.hash
   } catch {
-    return "/welcome"
+    return "/dashboard"
   }
 }
 
@@ -49,10 +51,26 @@ function absoluteUrl(path: string) {
 const slotClass =
   "size-12 rounded-xl border bg-background text-xl font-medium first:rounded-xl last:rounded-xl dark:bg-input/30 sm:size-14"
 
+const ROLE_OPTIONS: { role: UserRole; title: string; description: string; icon: LucideIcon }[] = [
+  {
+    role: "student",
+    title: "Candidate",
+    description: "Attend interviews, practice technical questions, and track interview performance.",
+    icon: UserRoundIcon,
+  },
+  {
+    role: "recruiter",
+    title: "Recruiter",
+    description: "Create job openings, manage candidates, conduct interviews, and access AI-powered recruitment tools.",
+    icon: BriefcaseBusinessIcon,
+  },
+]
+
 export function SignInForm() {
   const router = useRouter()
 
   const [step, setStep] = useState<"email" | "otp">("email")
+  const [role, setRole] = useState<UserRole | null>(null)
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -81,6 +99,10 @@ export function SignInForm() {
 
   async function requestCode(address: string) {
     setSending(true)
+    if (!(await saveRoleIntent())) {
+      setSending(false)
+      return false
+    }
     const result = await runAuth(() => authClient.emailOtp.sendVerificationOtp({ email: address, type: "sign-in" }))
     setSending(false)
     if (!result.ok) {
@@ -94,6 +116,10 @@ export function SignInForm() {
   async function onEmailSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!role) {
+      setError("Choose a workspace before continuing.")
+      return
+    }
     const address = email.trim().toLowerCase()
     if (!EMAIL_RE.test(address)) {
       setError("Enter a valid email address.")
@@ -116,6 +142,10 @@ export function SignInForm() {
     if (code.length !== 6 || verifying) return
     setVerifying(true)
     setError(null)
+    if (!(await saveRoleIntent())) {
+      setVerifying(false)
+      return
+    }
     const result = await runAuth(() => authClient.signIn.emailOtp({ email, otp: code }))
     if (!result.ok) {
       setVerifying(false)
@@ -124,23 +154,72 @@ export function SignInForm() {
       shake.start({ x: [0, -10, 10, -6, 6, -2, 0], transition: { duration: 0.45 } })
       return
     }
-    // Keep the spinner while we navigate.
-    router.replace(nextPath())
-    router.refresh()
+    try {
+      const completion = await fetch(`/api/auth/complete?next=${encodeURIComponent(nextPath())}`, { method: "POST" })
+      const data = await completion.json().catch(() => ({}))
+      if (completion.status === 409) {
+        router.replace("/auth/role-conflict")
+        router.refresh()
+        return
+      }
+      if (!completion.ok) throw new Error(data.error ?? "Couldn't finish signing in.")
+      router.replace(data.next)
+      router.refresh()
+    } catch (e) {
+      setVerifying(false)
+      setError(e instanceof Error ? e.message : "Couldn't finish signing in.")
+    }
+  }
+
+  async function saveRoleIntent() {
+    if (!role) {
+      setError("Choose a workspace before continuing.")
+      return false
+    }
+    try {
+      const response = await fetch("/api/auth/role-intent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ role }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error ?? "Couldn't save your workspace choice.")
+      return true
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save your workspace choice.")
+      return false
+    }
   }
 
   async function continueWithGoogle() {
     setGoogleLoading(true)
-    const result = await runAuth(() =>
-      authClient.signIn.social({
-        provider: "google",
-        callbackURL: absoluteUrl(nextPath()),
-        errorCallbackURL: absoluteUrl("/sign-in"),
-      }),
-    )
-    if (!result.ok) {
+    setError(null)
+    if (!(await saveRoleIntent())) {
       setGoogleLoading(false)
-      toast.error(result.message)
+      return
+    }
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: absoluteUrl(`/api/auth/complete?next=${encodeURIComponent(nextPath())}`),
+        errorCallbackURL: absoluteUrl("/sign-in"),
+        disableRedirect: true,
+      })
+      if (result.error) throw result.error
+      if (!result.data?.url) throw new Error("Google sign-in didn't return an authorization URL.")
+      const authorizationUrl = new URL(result.data.url)
+      if (
+        authorizationUrl.protocol !== "https:" ||
+        !authorizationUrl.hostname.includes(".neonauth.") ||
+        !authorizationUrl.hostname.endsWith(".aws.neon.tech") ||
+        !authorizationUrl.pathname.endsWith("/auth/sign-in/social/init")
+      ) {
+        throw new Error("Google sign-in returned an invalid authorization URL.")
+      }
+      window.location.assign(authorizationUrl.toString())
+    } catch (error) {
+      setGoogleLoading(false)
+      toast.error(friendlyAuthError(error))
     }
   }
 
@@ -156,8 +235,34 @@ export function SignInForm() {
           className="space-y-7"
         >
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight">Welcome to INT-IQ</h1>
-            <p className="text-muted-foreground">Sign in or create your account. No password needed.</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Choose your workspace</h1>
+            <p className="text-muted-foreground">Select how you&rsquo;ll use INT-IQ. This choice is saved to your account.</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Choose your workspace">
+            {ROLE_OPTIONS.map(({ role: optionRole, title, description, icon: Icon }) => (
+              <motion.button
+                key={optionRole}
+                type="button"
+                role="radio"
+                aria-checked={role === optionRole}
+                onClick={() => {
+                  setRole(optionRole)
+                  setError(null)
+                }}
+                whileTap={{ scale: 0.985 }}
+                className={cn(
+                  "min-h-36 rounded-2xl border p-4 text-left transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+                  role === optionRole ? "border-brand bg-brand-soft/60 ring-3 ring-brand/20" : "bg-card hover:bg-accent/50",
+                )}
+              >
+                <span className={cn("grid size-9 place-items-center rounded-xl border", role === optionRole ? "bg-brand text-primary-foreground" : "bg-brand-soft text-brand-text")}>
+                  <Icon className="size-4" />
+                </span>
+                <span className="mt-3 block text-sm font-semibold">{title}</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{description}</span>
+              </motion.button>
+            ))}
           </div>
 
           <Button
@@ -165,7 +270,7 @@ export function SignInForm() {
             variant="outline"
             className="h-12 w-full gap-3 text-[15px]"
             onClick={continueWithGoogle}
-            disabled={googleLoading}
+            disabled={!role || googleLoading}
           >
             {googleLoading ? <Loader2Icon className="animate-spin" /> : <GoogleIcon className="size-[18px]" />}
             Continue with Google
@@ -185,7 +290,6 @@ export function SignInForm() {
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                autoFocus
                 placeholder="you@college.edu"
                 value={email}
                 onChange={(e) => {
@@ -202,7 +306,7 @@ export function SignInForm() {
                 </p>
               )}
             </div>
-            <Button type="submit" className="h-12 w-full text-[15px]" disabled={sending}>
+            <Button type="submit" className="h-12 w-full text-[15px]" disabled={!role || sending}>
               {sending && <Loader2Icon className="animate-spin" />}
               Continue with email
             </Button>

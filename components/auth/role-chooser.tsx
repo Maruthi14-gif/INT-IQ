@@ -24,7 +24,7 @@ const ROLES: { role: UserRole; title: string; body: string; icon: LucideIcon; po
   },
 ]
 
-/** Choose the workspace after sign-in; returning users can switch without creating a second account. */
+/** Fallback role setup for existing accounts that have not completed onboarding. */
 export function RoleChooser({ firstName, initialRole }: { firstName: string | null; initialRole: UserRole }) {
   const router = useRouter()
   const [role, setRole] = useState<UserRole>(initialRole)
@@ -53,7 +53,7 @@ export function RoleChooser({ firstName, initialRole }: { firstName: string | nu
     <div className="w-full max-w-2xl space-y-8">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">{firstName ? `Welcome, ${firstName}` : "Welcome to INT-IQ"}</h1>
-        <p className="text-muted-foreground">How will you use INT-IQ today? You can change this workspace later from your profile.</p>
+        <p className="text-muted-foreground">Choose the workspace for this account. Its role is fixed after setup.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Account type">

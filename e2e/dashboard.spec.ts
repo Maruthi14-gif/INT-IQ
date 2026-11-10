@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { STORAGE_STATE, expectNoHorizontalOverflow, readTestUser, signInWithPassword, watchForErrors } from "./helpers"
+import { STORAGE_STATE, expectNoHorizontalOverflow, readRecruiterTestUser, readTestUser, signInWithPassword, watchForErrors } from "./helpers"
 
 test.describe("Dashboard (signed in)", () => {
   test.use({ storageState: STORAGE_STATE })
@@ -28,6 +28,33 @@ test.describe("Dashboard (signed in)", () => {
     await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
     await page.goto("/sign-in")
     await expect(page).toHaveURL(/\/dashboard$/)
+  })
+
+  test("candidate role cannot be changed through the API or enter recruiter routes", async ({ page }) => {
+    const roleChange = await page.request.post("/api/profile/role", { data: { role: "recruiter" } })
+    expect(roleChange.status()).toBe(409)
+    const recruiterMutation = await page.request.post("/api/recruiter/jobs", { data: {} })
+    expect(recruiterMutation.status()).toBe(403)
+
+    await page.goto("/recruiter")
+    await expect(page).toHaveURL(/\/dashboard$/)
+  })
+
+  test("recruiter role persists and candidate APIs are denied", async ({ page, baseURL }) => {
+    const user = readRecruiterTestUser()
+    await signInWithPassword(page.request, baseURL, user)
+    await page.goto("/recruiter")
+    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole("heading", { name: /Welcome, E2E/ })).toBeVisible()
+
+    const roleChange = await page.request.post("/api/profile/role", { data: { role: "student" } })
+    expect(roleChange.status()).toBe(409)
+    const candidateMutation = await page.request.post("/api/interviews", { data: {} })
+    expect(candidateMutation.status()).toBe(403)
+
+    await page.goto("/dashboard")
+    await expect(page).toHaveURL(/\/recruiter$/)
   })
 
   test("sidebar: active page, coming-soon items, collapse", async ({ page, isMobile }) => {

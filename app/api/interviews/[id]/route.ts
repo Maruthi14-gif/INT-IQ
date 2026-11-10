@@ -1,10 +1,10 @@
-import { apiUser, jsonError } from "@/lib/api"
+import { apiUserWithRole, jsonError } from "@/lib/api"
 import { getInterview } from "@/lib/interviews"
 
 /** Current progress of an interview (used by the voice room to follow the call). */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await apiUser()
-  if (!user) return jsonError(401, "Please sign in again.")
+  const { user, error } = await apiUserWithRole("student")
+  if (!user) return error
   const { id } = await params
 
   const interview = await getInterview(user.id, id)

@@ -1,6 +1,6 @@
 # INT-IQ
 
-AI mock interviews for students. Practice live voice interviews with an AI interviewer that reads your resume, asks follow-up questions, and gives feedback on every answer.
+Interview practice for candidates and recruiting tools for hiring teams.
 
 Built by **TEAM DARKNIGHTS** · Live: https://int-iq.vercel.app
 
@@ -44,6 +44,8 @@ On Vercel, set the same variables (except `DATABASE_URL_UNPOOLED`) for Productio
 ## Auth setup (Neon Auth)
 
 - Email codes are sent by Neon (shared sender in development; add custom SMTP in Neon before a real launch).
+- Choose Candidate or Recruiter before signing in. The selected role is saved once per account; existing roles are not changed by later sign-ins.
+- Google sign-in requests an account chooser each time. To use a different app account, sign out first, then choose the other Google account.
 - Google works out of the box with Neon's shared development keys. For your own Google client:
   1. Google Cloud Console → Google Auth Platform → Clients → Create client (Web application).
   2. Authorized redirect URI: `https://ep-billowing-cell-a1hyej21.neonauth.ap-southeast-1.aws.neon.tech/neondb/auth/callback/google`

@@ -7,7 +7,8 @@ import { SignInForm } from "@/components/auth/sign-in-form"
 import { Logo } from "@/components/brand/logo"
 import { VoiceOrb } from "@/components/brand/voice-orb"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { getSession } from "@/lib/session"
+import { getOrCreateProfile } from "@/lib/profiles"
+import { getSession, homeFor } from "@/lib/session"
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -32,7 +33,7 @@ export default function SignInPage() {
         </div>
 
         <div className="flex flex-1 items-center justify-center py-12">
-          <div className="w-full max-w-[400px]">
+          <div className="w-full max-w-[520px]">
             {/* Static: part of the prerendered page, so it shows instantly. */}
             <SignInForm />
             {/* Request-time check that can't hold up the form. */}
@@ -42,7 +43,7 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">Built for students preparing for placements and internships.</p>
+        <p className="text-center text-xs text-muted-foreground">Interview practice and hiring, together.</p>
       </div>
 
       {/* brand panel */}
@@ -79,9 +80,12 @@ export default function SignInPage() {
   )
 }
 
-/** Already signed in? Go to the dashboard. Renders nothing otherwise. */
+/** Already signed in? Go to the account's workspace. Renders nothing otherwise. */
 async function RedirectIfSignedIn() {
   const session = await getSession()
-  if (session) redirect("/dashboard")
+  if (session) {
+    const profile = await getOrCreateProfile(session.user.id)
+    redirect(profile.roleChosen ? homeFor(profile.role) : "/welcome")
+  }
   return null
 }

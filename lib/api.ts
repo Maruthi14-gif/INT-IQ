@@ -19,7 +19,7 @@ export async function apiUserWithRole(role: UserRole) {
   const user = await apiUser()
   if (!user) return { user: null, error: jsonError(401, "Please sign in again.") }
   const profile = await getOrCreateProfile(user.id)
-  if (profile.role !== role) return { user: null, error: jsonError(403, "You don't have access to this.") }
+  if (!profile.roleChosen || profile.role !== role) return { user: null, error: jsonError(403, "You don't have access to this.") }
   return { user, profile, error: null }
 }
 
