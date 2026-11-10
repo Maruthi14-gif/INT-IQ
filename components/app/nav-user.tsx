@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDownIcon, Loader2Icon, LogOutIcon, Repeat2Icon, UserIcon } from "lucide-react"
+import { ChevronsUpDownIcon, Loader2Icon, LogOutIcon, UserIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -95,9 +95,6 @@ export function NavUser({ user, role }: NavUserProps) {
             )}
             <DropdownMenuItem asChild>
               <Link href="/profile"><UserIcon />Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/welcome"><Repeat2Icon />Switch workspace</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

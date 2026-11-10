@@ -46,7 +46,6 @@ async function Profile() {
             <h2 className="flex items-center gap-2 font-medium">{student ? <GraduationCapIcon className="size-4 text-brand-text" /> : <BriefcaseIcon className="size-4 text-brand-text" />} {student ? "Student workspace" : "Recruiter workspace"}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{student ? "Practice interviews, manage your resume, and track applications." : "Post jobs, review candidates, and run interviews."}</p>
           </div>
-          <Button asChild variant="outline" className="h-9"><Link href="/welcome">Switch workspace</Link></Button>
         </div>
         {student && (
           <dl className="grid gap-4 border-t pt-4 text-sm sm:grid-cols-3">
