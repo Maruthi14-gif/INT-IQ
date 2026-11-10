@@ -1,5 +1,6 @@
 import { BriefcaseIcon, ChevronRightIcon } from "lucide-react"
 import Link from "next/link"
+import { HighlightList } from "@/components/effects/highlight-list"
 import { JobStatusBadge } from "@/components/recruiting/status-badge"
 import { Button } from "@/components/ui/button"
 import type { RecruiterJobSummary } from "@/lib/recruiting"
@@ -21,10 +22,10 @@ export function JobList({ jobs }: { jobs: RecruiterJobSummary[] }) {
     )
   }
   return (
-    <ul className="divide-y">
+    <HighlightList className="divide-y">
       {jobs.map((job) => (
-        <li key={job.id}>
-          <Link href={`/recruiter/jobs/${job.id}`} className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-accent/40">
+        <li key={job.id} data-row>
+          <Link href={`/recruiter/jobs/${job.id}`} className="mx-2 flex items-center gap-4 rounded-xl px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-2">
                 <span className="truncate font-medium">{job.title}</span>
@@ -42,6 +43,6 @@ export function JobList({ jobs }: { jobs: RecruiterJobSummary[] }) {
           </Link>
         </li>
       ))}
-    </ul>
+    </HighlightList>
   )
 }

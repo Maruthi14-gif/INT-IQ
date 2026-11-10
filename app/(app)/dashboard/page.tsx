@@ -2,6 +2,13 @@ import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, CheckIcon, FileTextIcon, M
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
+import { BackgroundBeams } from "@/components/effects/background-beams"
+import { BackgroundGradient } from "@/components/effects/background-gradient"
+import { CountUp } from "@/components/effects/count-up"
+import { GlowingEffect } from "@/components/effects/glowing-effect"
+import { MovingBorderLink } from "@/components/effects/moving-border"
+import { PageSpotlight } from "@/components/effects/page-spotlight"
+import { TextGenerateEffect } from "@/components/effects/text-generate-effect"
 import { InterviewList } from "@/components/report/interview-list"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,10 +24,13 @@ export const metadata: Metadata = {
 
 export default function DashboardPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <Dashboard />
-      </Suspense>
+    <div className="relative mx-auto w-full max-w-6xl">
+      <PageSpotlight />
+      <div className="relative space-y-8">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <Dashboard />
+        </Suspense>
+      </div>
     </div>
   )
 }
@@ -60,54 +70,59 @@ async function Dashboard() {
 
   return (
     <>
-      <div className="space-y-1.5">
+      <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-medium">{firstName}&rsquo;s interview prep</h1>
-          <Badge variant="outline" className="capitalize" data-testid="profile-role">
+          <h1 className="text-3xl font-medium sm:text-4xl">
+            <TextGenerateEffect text={`${firstName}’s interview prep`} />
+          </h1>
+          <Badge variant="outline" className="border-brand/40 capitalize text-brand-text" data-testid="profile-role">
             {profile.role}
           </Badge>
         </div>
         <p className="text-muted-foreground">
           {profile.targetRole ? `Preparing for ${profile.targetRole}` : "Add your resume and target role to get personal questions"}
         </p>
-      </div>
+      </header>
 
       {/* Recruiter invitations come first: they count. */}
       {invites.length > 0 && (
-        <section className="overflow-hidden rounded-2xl border border-brand/30 bg-card" aria-labelledby="invites-title">
-          <div className="flex items-center justify-between border-b px-6 py-4">
-            <h2 id="invites-title" className="flex items-center gap-2 font-medium">
-              <BriefcaseIcon className="size-4 text-brand-text" /> Interview invitations
-            </h2>
-            <Link href="/applications" className="text-sm font-medium text-brand-text hover:opacity-80">
-              My applications
-            </Link>
-          </div>
-          <ul className="divide-y">
-            {invites.map((inv) => (
-              <li key={inv.id} className="flex flex-wrap items-center gap-4 px-6 py-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-                  {inv.kind === "ai" ? <MicIcon className="size-4" /> : <CalendarIcon className="size-4" />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-medium">
-                    {inv.jobTitle} <span className="font-normal text-muted-foreground">· {inv.company}</span>
+        <BackgroundGradient className="overflow-hidden rounded-2xl bg-card">
+          <section aria-labelledby="invites-title">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 id="invites-title" className="flex items-center gap-2 font-medium">
+                <BriefcaseIcon className="size-4 text-brand-text" /> Interview invitations
+                <span className="rounded-full bg-brand px-2 py-0.5 font-mono text-xs text-brand-foreground tabular-nums">{invites.length}</span>
+              </h2>
+              <Link href="/applications" className="text-sm font-medium text-brand-text hover:opacity-80">
+                My applications
+              </Link>
+            </div>
+            <ul className="divide-y">
+              {invites.map((inv) => (
+                <li key={inv.id} className="flex flex-wrap items-center gap-4 px-6 py-4">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
+                    {inv.kind === "ai" ? <MicIcon className="size-4" /> : <CalendarIcon className="size-4" />}
                   </span>
-                  <span className="block text-sm text-muted-foreground">
-                    {inv.kind === "ai"
-                      ? inv.status === "accepted"
-                        ? "AI interview in progress"
-                        : "The recruiter invited you to an AI interview"
-                      : `Live interview ${inv.scheduledAt?.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) ?? ""}`}
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium">
+                      {inv.jobTitle} <span className="font-normal text-muted-foreground">· {inv.company}</span>
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      {inv.kind === "ai"
+                        ? inv.status === "accepted"
+                          ? "AI interview in progress"
+                          : "The recruiter invited you to an AI interview"
+                        : `Live interview ${inv.scheduledAt?.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) ?? ""}`}
+                    </span>
                   </span>
-                </span>
-                <Button asChild className="h-9">
-                  <Link href={`/invitations/${inv.id}`}>{inv.kind === "ai" ? (inv.status === "accepted" ? "Continue" : "Start") : "Details"}</Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
+                  <Button asChild className="h-9">
+                    <Link href={`/invitations/${inv.id}`}>{inv.kind === "ai" ? (inv.status === "accepted" ? "Continue" : "Start") : "Details"}</Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </BackgroundGradient>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -119,19 +134,22 @@ async function Dashboard() {
       {interviews.length > 0 && (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Interviews completed" value={String(completed.length)} hint={best !== null ? `Best score ${best}` : "Finish one to see scores"} />
-            <StatCard label="Average score" value={average !== null ? String(average) : "—"} hint={average !== null ? "Out of 100" : "Finish one to see scores"} />
-            <StatCard label="Practice time" value={`${practiceMinutes(interviews)} min`} hint="Time spent in interviews" />
+            <StatCard label="Interviews completed" value={completed.length} hint={best !== null ? `Best score ${best}` : "Finish one to see scores"} />
+            <StatCard label="Average score" value={average} hint={average !== null ? "Out of 100" : "Finish one to see scores"} />
+            <StatCard label="Practice time" value={practiceMinutes(interviews)} suffix=" min" hint="Time spent in interviews" />
           </div>
 
-          <section className="overflow-hidden rounded-2xl border bg-card">
+          <section className="relative rounded-2xl border bg-card">
+            <GlowingEffect />
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="font-medium">Recent interviews</h2>
               <Link href="/reports" className="text-sm font-medium text-brand-text hover:opacity-80">
                 View all
               </Link>
             </div>
-            <InterviewList items={interviews.slice(0, 5)} />
+            <div className="py-2">
+              <InterviewList items={interviews.slice(0, 5)} />
+            </div>
           </section>
         </>
       )}
@@ -192,29 +210,25 @@ function NextStepCard({ next, className }: { next: NextStep; className?: string 
 
   return (
     <section
-      className={cn(
-        "rounded-2xl bg-stage p-6 text-stage-foreground ring-1 ring-white/10 sm:p-8",
-        className,
-      )}
+      className={cn("relative isolate overflow-hidden rounded-2xl bg-stage p-6 text-stage-foreground ring-1 ring-white/10 sm:p-8", className)}
       aria-labelledby="next-step-title"
     >
-      <div className="flex items-start justify-between gap-6">
-        <div className="max-w-md">
-          <Badge className="border-white/15 bg-white/10 text-white/80">{content.eyebrow}</Badge>
-          <h2 id="next-step-title" className="mt-4 text-2xl font-medium sm:text-3xl">
-            {content.title}
-          </h2>
-          <p className="mt-2 text-white/70">{content.body}</p>
-        </div>
+      <BackgroundBeams className="-z-10" />
+      <div aria-hidden className="absolute -top-24 -right-24 -z-10 size-72 rounded-full bg-brand/20 blur-3xl" />
+
+      <div className="max-w-md">
+        <Badge className="border-brand/30 bg-brand/15 text-brand">{content.eyebrow}</Badge>
+        <h2 id="next-step-title" className="mt-4 text-2xl font-medium sm:text-3xl">
+          {content.title}
+        </h2>
+        <p className="mt-2 text-white/70">{content.body}</p>
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <Button asChild className="h-11 bg-white px-5 text-[15px] text-stage hover:bg-white/90">
-          <Link href={content.primary.href}>
-            <PrimaryIcon />
-            {content.primary.label}
-          </Link>
-        </Button>
+        <MovingBorderLink href={content.primary.href} containerClassName="h-11" className="bg-white px-5 text-[15px] text-stage hover:bg-white/90">
+          <PrimaryIcon className="size-4" />
+          {content.primary.label}
+        </MovingBorderLink>
         {content.secondary && (
           <Link href={content.secondary.href} className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white">
             {content.secondary.label}
@@ -232,7 +246,8 @@ function HowItWorks({ steps }: { steps: { label: string; hint: string; done: boo
   const current = steps.findIndex((s) => !s.done)
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card p-6" aria-labelledby="how-title">
+    <section className="relative flex flex-col rounded-2xl border bg-card p-6" aria-labelledby="how-title">
+      <GlowingEffect />
       <h2 id="how-title" className="font-medium">
         How INT-IQ works
       </h2>
@@ -243,13 +258,14 @@ function HowItWorks({ steps }: { steps: { label: string; hint: string; done: boo
             <>
               <span
                 className={cn(
-                  "grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold",
+                  "relative grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold",
                   step.done && "border-transparent bg-muted text-foreground",
-                  isCurrent && "border-brand text-brand-text ring-3 ring-brand/20",
+                  isCurrent && "border-brand bg-brand text-brand-foreground",
                   !step.done && !isCurrent && "text-muted-foreground",
                 )}
               >
-                {step.done ? <CheckIcon className="size-3.5" /> : i + 1}
+                {isCurrent && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-brand/50" />}
+                <span className="relative">{step.done ? <CheckIcon className="size-3.5" /> : i + 1}</span>
               </span>
               <span>
                 <span className={cn("block text-sm font-medium", step.done && "text-muted-foreground")}>
@@ -279,11 +295,12 @@ function HowItWorks({ steps }: { steps: { label: string; hint: string; done: boo
 
 /* ── Stats ──────────────────────────────────────────────────── */
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+function StatCard({ label, value, suffix, hint }: { label: string; value: number | null; suffix?: string; hint: string }) {
   return (
-    <div className="rounded-2xl border bg-card p-5">
+    <div className="relative rounded-2xl border bg-card p-5">
+      <GlowingEffect />
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-3 font-mono text-3xl font-medium tabular-nums">{value}</p>
+      <p className="mt-3 font-mono text-3xl font-medium tabular-nums">{value === null ? "—" : <CountUp value={value} suffix={suffix} />}</p>
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   )

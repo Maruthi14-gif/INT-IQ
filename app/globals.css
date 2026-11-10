@@ -42,6 +42,10 @@
   --color-stage: #0e1119;
   --color-stage-raised: #171b25;
   --color-stage-foreground: #eef0f5;
+  /* Effect palette around the amber (glows, beams, gradient borders), same in both themes. */
+  --color-brand-light: #ffd98a;
+  --color-ember: #e07b39;
+  --color-ember-deep: #c2410c;
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-chart-1: var(--chart-1);
@@ -67,6 +71,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   --animate-bar: bar 1.1s ease-in-out infinite;
+  --animate-meteor-effect: meteor 5s linear infinite;
 }
 
 /* Light theme: ink ramp */
@@ -99,7 +104,7 @@
   --brand-foreground: #1a1405;
   --brand-text: #8a5a00;
   --brand-soft: #fcefd2;
-  --success: #15803d;
+  --success: #166534;
   --warning: #c2410c;
 
   --chart-1: #f2b544;
@@ -116,6 +121,11 @@
   --sidebar-accent-foreground: #111827;
   --sidebar-border: rgb(17 24 39 / 8%);
   --sidebar-ring: #b7791f;
+
+  /* Spotlight cones behind page headers (components/effects/spotlight.tsx). */
+  --spot-1: radial-gradient(68.54% 68.72% at 55.02% 31.46%, hsla(38, 95%, 55%, 0.16) 0, hsla(38, 95%, 50%, 0.05) 50%, hsla(38, 95%, 45%, 0) 80%);
+  --spot-2: radial-gradient(50% 50% at 50% 50%, hsla(38, 95%, 55%, 0.12) 0, hsla(38, 95%, 50%, 0.04) 80%, transparent 100%);
+  --spot-3: radial-gradient(50% 50% at 50% 50%, hsla(38, 95%, 55%, 0.08) 0, hsla(38, 95%, 45%, 0.03) 80%, transparent 100%);
 }
 
 /* Dark theme (default): ink ramp */
@@ -162,6 +172,10 @@
   --sidebar-accent-foreground: #eef0f5;
   --sidebar-border: rgb(238 240 245 / 7%);
   --sidebar-ring: #f2b544;
+
+  --spot-1: radial-gradient(68.54% 68.72% at 55.02% 31.46%, hsla(40, 100%, 75%, 0.11) 0, hsla(38, 95%, 55%, 0.03) 50%, hsla(38, 95%, 45%, 0) 80%);
+  --spot-2: radial-gradient(50% 50% at 50% 50%, hsla(40, 100%, 75%, 0.08) 0, hsla(38, 95%, 55%, 0.03) 80%, transparent 100%);
+  --spot-3: radial-gradient(50% 50% at 50% 50%, hsla(40, 100%, 75%, 0.05) 0, hsla(38, 95%, 45%, 0.02) 80%, transparent 100%);
 }
 
 @layer base {
@@ -176,6 +190,9 @@
     @apply bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
   }
+  p {
+    text-wrap: pretty;
+  }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
@@ -183,6 +200,13 @@
   ::selection {
     background: color-mix(in oklch, var(--brand) 30%, transparent);
   }
+}
+
+/* Meteors (components/effects/meteors.tsx): fly down and right, tail behind. */
+@keyframes meteor {
+  0% { transform: rotate(215deg) translateX(0); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(215deg) translateX(-500px); opacity: 0; }
 }
 
 @keyframes bar {

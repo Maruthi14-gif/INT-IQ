@@ -1,5 +1,6 @@
 import { ChevronRightIcon } from "lucide-react"
 import Link from "next/link"
+import { HighlightList } from "@/components/effects/highlight-list"
 import { scoreTone } from "@/components/report/score-ring"
 import type { InterviewSummary } from "@/lib/interviews"
 import { cn } from "@/lib/utils"
@@ -9,14 +10,14 @@ const ROUND_LABEL = { technical: "Technical", behavioral: "Behavioral", hr: "HR"
 /** Rows linking to each report (or back into an unfinished interview). */
 export function InterviewList({ items }: { items: InterviewSummary[] }) {
   return (
-    <ul className="divide-y">
+    <HighlightList className="divide-y">
       {items.map((i) => {
         const done = i.status === "completed"
         return (
-          <li key={i.id}>
+          <li key={i.id} data-row>
             <Link
               href={done ? `/reports/${i.id}` : `/interview/${i.id}`}
-              className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-accent/40"
+              className="mx-2 flex items-center gap-4 rounded-xl px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span
                 className={cn(
@@ -41,6 +42,6 @@ export function InterviewList({ items }: { items: InterviewSummary[] }) {
           </li>
         )
       })}
-    </ul>
+    </HighlightList>
   )
 }

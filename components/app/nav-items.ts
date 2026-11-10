@@ -75,5 +75,6 @@ export function titleForPath(pathname: string) {
       if (match && (!best || item.href.length > best.href.length)) best = item
     }
   }
-  return best?.title ?? ""
+  // Pages reached from the account menu rather than the sidebar.
+  return best?.title ?? (pathname === "/profile" ? "Profile" : "")
 }

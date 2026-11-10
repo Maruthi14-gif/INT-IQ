@@ -89,7 +89,7 @@ function NavGroups({ groups, pathname, tip }: { groups: NavGroup[]; pathname: st
                             <item.icon />
                             <span>{item.title}</span>
                           </SidebarMenuButton>
-                          <SidebarMenuBadge className="rounded-md border px-1.5 text-[10px] font-medium text-muted-foreground">
+                          <SidebarMenuBadge className="rounded-md border px-1.5 text-[11px] font-medium text-muted-foreground">
                             Soon
                           </SidebarMenuBadge>
                         </>

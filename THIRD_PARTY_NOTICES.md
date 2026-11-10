@@ -28,3 +28,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## Aceternity UI (free components)
+
+The effects in `components/effects/` (glowing effect, background beams, spotlight, moving
+border, hover border gradient, background gradient, meteors, comet card, text generate effect,
+card hover effect) are adapted from the free components of Aceternity UI,
+https://ui.aceternity.com, by Manu Arora. They were recolored, typed and changed for
+hydration safety, reduced motion and performance. Aceternity UI's terms allow use in end
+products; they do not allow redistributing the components themselves as a library or template.
