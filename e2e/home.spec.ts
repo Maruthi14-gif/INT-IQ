@@ -31,11 +31,21 @@ test.describe("Home and the lamp room", () => {
     await expect(page.getByTestId("lamp-card")).toHaveAttribute("inert", "")
   })
 
-  test("a lit lamp is remembered on this device", async ({ page }) => {
+  test("every visit starts with the lamp off, even after it was switched on", async ({ page }) => {
     await page.goto("/sign-in")
     await lightTheLamp(page)
     await page.reload()
-    await expect(page.getByTestId("lamp-card")).not.toHaveAttribute("inert", "")
+    await expect(page.getByTestId("lamp-card")).toHaveAttribute("inert", "")
+    await expect(page.getByRole("button", { name: "Pull the lamp cord to sign in" })).toHaveAttribute("aria-pressed", "false")
+  })
+
+  test("reduced motion still starts with the lamp off", async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: "reduce" })
+    const page = await context.newPage()
+    await page.goto("/sign-in")
+    await expect(page.getByTestId("lamp-card")).toHaveAttribute("inert", "")
+    await lightTheLamp(page)
+    await context.close()
   })
 
   test("dragging the cord down switches the lamp on", async ({ page, isMobile }) => {

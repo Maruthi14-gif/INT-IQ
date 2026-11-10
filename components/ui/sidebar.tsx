@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { Slot } from "radix-ui"
 
-import { useIsMobile } from "@/lib/hooks/use-mobile"
+import { isMobileNow, useIsMobile } from "@/lib/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -37,19 +37,20 @@ type SidebarContextProps = {
   setOpen: (open: boolean) => void
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
-  isMobile: boolean
   toggleSidebar: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
 
+// isMobile is read per component (not shared through context), so it stays hydration safe.
 function useSidebar() {
   const context = React.useContext(SidebarContext)
+  const isMobile = useIsMobile()
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
 
-  return context
+  return { ...context, isMobile }
 }
 
 function SidebarProvider({
@@ -65,7 +66,6 @@ function SidebarProvider({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
-  const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
   // This is the internal state of the sidebar.
@@ -89,8 +89,8 @@ function SidebarProvider({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
-  }, [isMobile, setOpen, setOpenMobile])
+    return isMobileNow() ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+  }, [setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -117,12 +117,11 @@ function SidebarProvider({
       state,
       open,
       setOpen,
-      isMobile,
       openMobile,
       setOpenMobile,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, openMobile, setOpenMobile, toggleSidebar]
   )
 
   return (

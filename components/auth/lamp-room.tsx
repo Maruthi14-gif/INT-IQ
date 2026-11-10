@@ -11,11 +11,10 @@ import "./lamp-room.css"
  * the room and slides the sign-in card in. Adapted from "Animated Lamp Login" by
  * saklincodes (MIT, see THIRD_PARTY_NOTICES.md).
  *
- * Kept simple to use: a click or Enter on the cord also works, the choice is remembered
- * on this device, and people who prefer reduced motion get the lit room straight away.
+ * The room always starts dark, so every visit begins with the pull. A click or Enter on the
+ * cord also works, and reduced motion skips the swinging and drifting, not the pull.
  */
 
-const LAMP_KEY = "intiq-lamp"
 const SOUND_KEY = "intiq-lamp-sound"
 const STRING_LENGTH = 95
 const MOTES = 12
@@ -31,7 +30,7 @@ const write = (key: string, value: string) => {
   try {
     window.localStorage.setItem(key, value)
   } catch {
-    /* private mode: the lamp just won't be remembered */
+    /* private mode: the sound choice just isn't remembered */
   }
 }
 
@@ -84,22 +83,17 @@ export function LampRoom({ children }: { children: ReactNode }) {
   const spring = useRef(0)
   const calm = useRef(false) // prefers reduced motion
 
-  // Start lit for returning visitors and for reduced motion; remember the sound choice.
+  // Read device preferences after mount, so the server render stays identical. The lamp itself
+  // always starts off; only the sound choice is remembered.
   useEffect(() => {
     calm.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    const remembered = read(LAMP_KEY) === "on"
-    const quiet = read(SOUND_KEY) === "off"
-    // Reading device preferences after mount keeps the server render identical.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (remembered || calm.current) setOn(true)
-    if (quiet) setSound(false)
-    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (read(SOUND_KEY) === "off") setSound(false)
   }, [])
 
   const setLamp = useCallback(
     (next: boolean) => {
       setOn(next)
-      write(LAMP_KEY, next ? "on" : "off")
       play(next ? "on" : "off")
     },
     [play],
