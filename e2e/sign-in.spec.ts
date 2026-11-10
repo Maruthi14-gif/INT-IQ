@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test"
-import { expectNoHorizontalOverflow, watchForErrors } from "./helpers"
+import { expectNoHorizontalOverflow, watchForErrors, lightTheLamp } from "./helpers"
 
 const SEND_CODE = "**/api/auth/email-otp/send-verification-otp"
 
 test.describe("Sign-in (signed out)", () => {
   test("protected pages send you to sign-in", async ({ page }) => {
     await page.goto("/dashboard")
+    await lightTheLamp(page)
     await expect(page).toHaveURL(/\/sign-in$/)
     await expect(page.getByRole("heading", { name: "Choose your workspace" })).toBeVisible()
     await expectNoHorizontalOverflow(page)
@@ -18,6 +19,7 @@ test.describe("Sign-in (signed out)", () => {
       return route.abort()
     })
     await page.goto("/sign-in")
+    await lightTheLamp(page)
     await expect(page.getByRole("button", { name: "Continue with Google" })).toBeDisabled()
     await page.getByRole("radio", { name: /Candidate/ }).click()
     await page.getByLabel("Email address").fill("not-an-email")
@@ -37,6 +39,7 @@ test.describe("Sign-in (signed out)", () => {
     const problems = watchForErrors(page)
 
     await page.goto("/sign-in")
+    await lightTheLamp(page)
     await page.getByRole("radio", { name: /Candidate/ }).click()
     await page.getByLabel("Email address").fill("  Student.Test@Example.COM ")
     await page.getByRole("button", { name: "Continue with email" }).click()
@@ -68,6 +71,7 @@ test.describe("Sign-in (signed out)", () => {
 
   test("Continue with Google starts Google's sign-in", async ({ page }) => {
     await page.goto("/sign-in")
+    await lightTheLamp(page)
     await page.getByRole("radio", { name: /Recruiter/ }).click()
     const authorizationRequest = page.waitForRequest((request) => {
       const url = new URL(request.url())

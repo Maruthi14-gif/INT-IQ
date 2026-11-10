@@ -55,3 +55,10 @@ export function watchForErrors(page: Page) {
   })
   return problems
 }
+
+/** The sign-in form sits in a dark room until the desk lamp is switched on: pull the cord (keyboard). */
+export async function lightTheLamp(page: Page) {
+  const cord = page.getByRole("button", { name: /Pull the lamp cord/ })
+  if ((await cord.getAttribute("aria-pressed")) !== "true") await cord.press("Enter")
+  await expect(page.getByTestId("lamp-card")).not.toHaveAttribute("inert", "")
+}

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { STORAGE_STATE, expectNoHorizontalOverflow } from "./helpers"
+import { STORAGE_STATE, expectNoHorizontalOverflow, lightTheLamp } from "./helpers"
 
 const VIEWPORTS = [
   { name: "phone", width: 375, height: 812 },
@@ -27,6 +27,7 @@ test.describe("Responsive layout", () => {
         })
         const page = await context.newPage()
         await page.goto(pg.path)
+        if (pg.path === "/sign-in") await lightTheLamp(page)
         await expect(page.getByRole("heading", { name: pg.heading }).first()).toBeVisible()
         await expectNoHorizontalOverflow(page)
 

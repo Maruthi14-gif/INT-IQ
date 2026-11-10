@@ -1,0 +1,418 @@
+/* ─────────────────────────────────────────────────────────────
+ * Sign-in "lamp room": pull the lamp's cord to light the room and reveal the form.
+ * Adapted from "Animated Lamp Login" by saklincodes (MIT License, see
+ * THIRD_PARTY_NOTICES.md), recoloured to INT-IQ's amber and kept to one light colour.
+ * The room is always dark; the form inside it uses the dark tokens.
+ * ───────────────────────────────────────────────────────────── */
+
+.lamp-room {
+  --lamp-clr: #f5c25a;
+  --lamp-core: #fff3d6;
+  --lamp-strong: rgb(242 181 68 / 60%);
+  --lamp-soft: rgb(242 181 68 / 22%);
+  --lamp-beam-start: rgb(255 226 160 / 80%);
+  --lamp-beam-mid: rgb(242 181 68 / 22%);
+  --brass-hi: #e9c46a;
+  --brass: #b88a2b;
+  --brass-lo: #7a5a17;
+  --metal-hi: #2a303d;
+  --metal: #161a23;
+  --metal-lo: #0b0d14;
+
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  overflow: hidden;
+  color: var(--foreground);
+  background: radial-gradient(circle at 35% 45%, #10131b 0%, #07080d 85%);
+  transition: background 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lamp-room.is-on {
+  background: radial-gradient(circle at 35% 45%, #171c28 0%, #0b0d14 85%);
+}
+
+/* night window */
+.lamp-window {
+  position: absolute;
+  top: 88px;
+  left: 60px;
+  width: 160px;
+  height: 240px;
+  border-radius: 12px;
+  border: 4px solid rgb(255 255 255 / 5%);
+  background: linear-gradient(180deg, #050811 0%, #0c1220 100%);
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgb(0 0 0 / 80%), 0 10px 30px rgb(0 0 0 / 40%);
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.8s ease;
+  z-index: 1;
+}
+.lamp-room.is-on .lamp-window { opacity: 0.25; }
+.lamp-window::before,
+.lamp-window::after {
+  content: "";
+  position: absolute;
+  background: rgb(255 255 255 / 7%);
+}
+.lamp-window::before { top: 50%; left: 0; right: 0; height: 3px; }
+.lamp-window::after { left: 50%; top: 0; bottom: 0; width: 3px; }
+.lamp-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 40px 70px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 90px 40px, #fff3d6, transparent),
+    radial-gradient(1px 1px at 130px 80px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 110px 140px, #c9d4ff, transparent),
+    radial-gradient(1px 1px at 50px 180px, #fff, transparent);
+  animation: lamp-twinkle 4s ease-in-out infinite alternate;
+}
+@keyframes lamp-twinkle { from { opacity: 0.3; } to { opacity: 0.9; } }
+
+/* the light the lamp spills into the room */
+.lamp-room-light {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 1100px;
+  height: 1100px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transform: scale(0.6);
+  background: radial-gradient(circle, var(--lamp-soft) 0%, transparent 70%);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lamp-room.is-on .lamp-room-light { opacity: 1; transform: scale(1.4); }
+
+/* dust motes in the light */
+.lamp-motes { position: absolute; inset: 0; pointer-events: none; z-index: 15; overflow: hidden; }
+.lamp-mote {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--lamp-clr);
+  box-shadow: 0 0 10px var(--lamp-clr);
+  animation: lamp-drift var(--duration) ease-in-out var(--delay) infinite alternate;
+  will-change: transform, opacity;
+}
+@keyframes lamp-drift {
+  0% { transform: translate(var(--x1), var(--y1)) scale(0.8); opacity: 0.2; }
+  33% { transform: translate(var(--x2), var(--y2)) scale(1.2); opacity: 0.8; }
+  66% { transform: translate(var(--x3), var(--y3)) scale(0.9); opacity: 0.4; }
+  100% { transform: translate(var(--x4), var(--y4)) scale(1); opacity: 0.7; }
+}
+
+/* top bar */
+.lamp-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) 20px max(24px, env(safe-area-inset-left, 0px));
+}
+.lamp-sound {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgb(17 20 28 / 70%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(255 255 255 / 10%);
+  color: #c4c9d4;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.lamp-sound:hover { background: rgb(35 42 54 / 90%); color: #fff; }
+.lamp-sound:focus-visible { outline: 2px solid var(--lamp-clr); outline-offset: 2px; }
+
+/* ── the lamp ─────────────────────────────── */
+.lamp-side {
+  flex: 1.1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+.lamp {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: scale(1.15);
+  transform-origin: center bottom;
+  -webkit-tap-highlight-color: transparent;
+}
+.lamp-hint {
+  position: absolute;
+  top: 15px;
+  left: calc(50% + 84px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgb(17 20 28 / 85%);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 15%);
+  color: #e6e9f0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 10px 25px rgb(0 0 0 / 50%);
+  pointer-events: none;
+  opacity: 0.95;
+  animation: lamp-float 2.5s ease-in-out infinite;
+  transition: opacity 0.5s ease;
+  z-index: 20;
+}
+.lamp-room.is-on .lamp-hint { opacity: 0; }
+@keyframes lamp-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+
+.lamp-finial {
+  width: 18px;
+  height: 8px;
+  background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass-lo) 100%);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 -2px 5px rgb(0 0 0 / 50%);
+  z-index: 12;
+}
+.lamp-head {
+  width: 154px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--metal-hi) 0%, var(--metal) 60%, var(--metal-lo) 100%);
+  border-radius: 154px 154px 8px 8px;
+  border-bottom: 3px solid #0e1016;
+  box-shadow: inset 0 3px 6px rgb(255 255 255 / 18%), inset 0 -2px 6px rgb(0 0 0 / 80%), 0 15px 30px rgb(0 0 0 / 95%);
+  position: relative;
+  z-index: 11;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+  will-change: transform;
+}
+.lamp-room.is-on .lamp-head {
+  box-shadow: inset 0 -4px 15px var(--lamp-soft), inset 0 3px 6px rgb(255 255 255 / 25%), 0 15px 30px rgb(0 0 0 / 90%);
+}
+.lamp-bulb {
+  width: 32px;
+  height: 14px;
+  margin-bottom: 2px;
+  border-radius: 50% 50% 0 0;
+  background: #2a2e37;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+.lamp-room.is-on .lamp-bulb { background: var(--lamp-core); box-shadow: 0 0 20px 8px var(--lamp-clr); }
+.lamp-glow {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  margin-left: -55px;
+  width: 110px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 45px 25px var(--lamp-strong), 0 0 90px 45px var(--lamp-soft);
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+  pointer-events: none;
+}
+.lamp-room.is-on .lamp-glow { opacity: 1; }
+.lamp-beam {
+  position: absolute;
+  top: 55px;
+  left: 50%;
+  margin-left: -310px;
+  width: 620px;
+  height: 400px;
+  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, var(--lamp-beam-start) 0%, var(--lamp-beam-mid) 50%, transparent 100%);
+  filter: blur(8px);
+  transform-origin: 50% 0;
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 6;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.lamp-room.is-on .lamp-beam { opacity: 0.95; }
+.lamp-neck {
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--brass) 0%, var(--brass-hi) 50%, var(--brass-lo) 100%);
+  z-index: 9;
+}
+.lamp-stem {
+  position: relative;
+  width: 8px;
+  height: 310px;
+  background: linear-gradient(90deg, #0e1016 0%, #2c323e 45%, #0e1016 100%);
+  box-shadow: 0 0 10px rgb(0 0 0 / 80%);
+  transition: box-shadow 0.4s ease;
+  z-index: 8;
+}
+.lamp-room.is-on .lamp-stem { box-shadow: 0 0 15px var(--lamp-soft); }
+.lamp-joint {
+  width: 18px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--brass-lo) 0%, var(--brass-hi) 50%, var(--brass-lo) 100%);
+  z-index: 9;
+}
+.lamp-base {
+  position: relative;
+  width: 120px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 40px 40px 6px 6px;
+  background: linear-gradient(180deg, var(--metal-hi) 0%, var(--metal) 100%);
+  border-bottom: 3px solid #07080d;
+  box-shadow: inset 0 2px 4px rgb(255 255 255 / 14%), 0 12px 24px rgb(0 0 0 / 90%);
+  z-index: 9;
+}
+.lamp-base::after { content: ""; width: 80px; height: 3px; border-radius: 2px; background: rgb(255 255 255 / 8%); }
+.lamp-desk {
+  position: absolute;
+  bottom: -45px;
+  left: 50%;
+  margin-left: -325px;
+  width: 650px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgb(255 214 140 / 35%) 0%, rgb(242 181 68 / 8%) 55%, transparent 75%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: 3;
+  pointer-events: none;
+}
+.lamp-room.is-on .lamp-desk { opacity: 1; }
+
+/* pull cord with spring physics */
+.lamp-string {
+  position: absolute;
+  top: 55px;
+  left: calc(50% + 58px);
+  width: 4px;
+  height: 4px;
+  overflow: visible;
+  z-index: 10;
+  pointer-events: none;
+}
+.lamp-string path {
+  stroke: #858c99;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 80%));
+}
+.lamp-handle {
+  position: absolute;
+  top: 145px;
+  left: calc(50% + 52px);
+  width: 14px;
+  height: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #f7d56e 0%, #c49826 60%, #7e5e0f 100%);
+  box-shadow: inset 0 2px 3px rgb(255 255 255 / 60%), 0 4px 10px rgb(0 0 0 / 80%);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  z-index: 12;
+  transition: box-shadow 0.2s ease, filter 0.2s ease;
+}
+/* a bigger, invisible target for fingers */
+.lamp-handle::before { content: ""; position: absolute; inset: -14px -16px; }
+.lamp-handle::after { content: ""; width: 4px; height: 12px; border-radius: 2px; background: rgb(0 0 0 / 25%); }
+.lamp-handle:hover { filter: brightness(1.15); box-shadow: inset 0 2px 3px rgb(255 255 255 / 80%), 0 6px 14px rgb(0 0 0 / 90%), 0 0 12px var(--lamp-soft); }
+.lamp-handle[data-dragging="true"] { cursor: grabbing; filter: brightness(1.25); }
+.lamp-handle:focus-visible { outline: 2px solid var(--lamp-clr); outline-offset: 4px; }
+
+/* ── the sign-in card ─────────────────────── */
+.lamp-login {
+  flex: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 8% 48px 24px;
+  z-index: 20;
+}
+.lamp-card {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  padding: 40px;
+  border-radius: 24px;
+  background: rgb(17 20 28 / 72%);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgb(238 240 245 / 10%);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(45px) scale(0.96);
+  filter: blur(12px);
+  pointer-events: none;
+  box-shadow: 0 30px 60px rgb(0 0 0 / 80%);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), filter 0.6s ease, box-shadow 0.6s ease;
+}
+.lamp-room.is-on .lamp-card {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  pointer-events: auto;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 70%), 0 0 30px -5px var(--lamp-soft);
+  transition-delay: 0.15s;
+}
+.lamp-card-line {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 35%), var(--lamp-clr), transparent);
+}
+.lamp-card-spot {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--lamp-soft) 0%, transparent 65%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.lamp-room.is-on .lamp-card-spot { opacity: 0.35; }
+.lamp-card-body { position: relative; }
+
+/* ── phones and tablets: lamp above, card below ── */
+@media (max-width: 950px) {
+  .lamp-room { flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+  .lamp-side { flex: 0 0 auto; min-height: 440px; height: 58svh; padding-top: 64px; padding-bottom: 48px; }
+  .lamp { transform: scale(0.9); }
+  .lamp-login { padding: 8px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px)); flex: 0 0 auto; }
+  .lamp-window { display: none; }
+  .lamp-card { padding: 28px 22px; }
+  .lamp-hint { left: 50%; top: -6px; translate: -50% 0; animation: none; }
+}
+@media (max-height: 700px) and (min-width: 951px) {
+  .lamp { transform: scale(0.85); }
+  .lamp-card { padding: 28px 32px; }
+}
+
+/* Reduced motion: no drifting, bobbing or twinkling. */
+@media (prefers-reduced-motion: reduce) {
+  .lamp-stars, .lamp-hint, .lamp-mote { animation: none; }
+}
