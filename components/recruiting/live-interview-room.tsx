@@ -163,8 +163,9 @@ export function LiveInterviewRoom({ initial }: { initial: LiveRoomData }) {
       updateRoom(state as Partial<LiveRoomData>)
       for (const raw of signalData.signals as Signal[]) {
         if (seenSignals.current.has(raw.id)) continue
-        seenSignals.current.add(raw.id)
+        if (!peer.current) break
         await applySignal(raw)
+        seenSignals.current.add(raw.id)
       }
     } catch (error) {
       // A temporary polling failure should not tear down an otherwise healthy call.
