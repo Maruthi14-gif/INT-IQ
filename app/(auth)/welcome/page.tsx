@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { Suspense } from "react"
 import { RoleChooser } from "@/components/auth/role-chooser"
 import { Logo } from "@/components/brand/logo"
@@ -13,9 +12,7 @@ export const metadata: Metadata = { title: "Welcome" }
 export default function WelcomePage() {
   return (
     <div className="flex min-h-svh flex-col px-5 py-5 sm:px-8">
-      <Link href="/" aria-label="INT-IQ home" className="w-fit rounded-md">
-        <Logo />
-      </Link>
+      <Logo className="w-fit" />
       <div className="flex flex-1 items-center justify-center py-12">
         <Suspense fallback={<Skeleton className="h-80 w-full max-w-2xl rounded-2xl" />}>
           <Chooser />

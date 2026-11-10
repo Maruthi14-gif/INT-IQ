@@ -27,7 +27,7 @@ async function RoleConflict() {
   return (
     <main className="flex min-h-svh flex-col px-5 py-5 sm:px-8">
       <header className="flex items-center justify-between">
-        <Link href="/" aria-label="INT-IQ home" className="rounded-md"><Logo /></Link>
+        <Logo />
         <ThemeToggle />
       </header>
       <section className="mx-auto my-auto w-full max-w-lg space-y-6 rounded-2xl border bg-card p-6 text-center sm:p-8">

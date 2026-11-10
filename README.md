@@ -112,7 +112,6 @@ Two modes share the same interviewer, storage and reports:
 
 ```
 app/                       Pages and API routes (Next.js App Router)
-  page.tsx                 Landing page
   (auth)/sign-in/          Google + email code sign-in
   (app)/                   Signed-in area: dashboard, resume, interview, reports
   api/auth/[...path]/      Neon Auth proxy
@@ -120,7 +119,7 @@ app/                       Pages and API routes (Next.js App Router)
   api/resume/              Resume upload + AI analysis
   api/vapi/                Voice call proxy + custom-LLM agent endpoint
 components/                React components, one folder per feature
-  landing/ auth/ app/      Landing page, sign-in form, sidebar shell
+  auth/ app/               Sign-in form and role choice, sidebar shell
   interview/ report/       Setup, text room, voice room, camera checks; report cards
   resume/ brand/ ui/       Resume form; logo and orb; shadcn primitives
 lib/                       Server and shared logic

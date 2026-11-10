@@ -55,13 +55,13 @@ const ROLE_OPTIONS: { role: UserRole; title: string; description: string; icon: 
   {
     role: "student",
     title: "Candidate",
-    description: "Attend interviews, practice technical questions, and track interview performance.",
+    description: "Practice interviews and apply to jobs",
     icon: UserRoundIcon,
   },
   {
     role: "recruiter",
     title: "Recruiter",
-    description: "Create job openings, manage candidates, conduct interviews, and access AI-powered recruitment tools.",
+    description: "Post jobs and interview candidates",
     icon: BriefcaseBusinessIcon,
   },
 ]

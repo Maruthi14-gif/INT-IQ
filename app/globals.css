@@ -7,16 +7,14 @@
 /* ─────────────────────────────────────────────────────────────
  * INT-IQ design tokens
  * World: the night-before desk. Ink-blue neutrals, one highlighter-amber accent
- * used rarely (primary selection, key figures, the highlighter mark).
- * Dark is the default theme. Fonts: Geist (UI), Geist Mono (figures),
- * Instrument Serif (the landing headline only).
+ * used rarely (primary selection, key figures).
+ * Dark is the default theme. Fonts: Geist (UI), Geist Mono (figures).
  * ───────────────────────────────────────────────────────────── */
 
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -184,16 +182,6 @@
   }
   ::selection {
     background: color-mix(in oklch, var(--brand) 30%, transparent);
-  }
-}
-
-@layer utilities {
-  /* The signature: a highlighter stroke on the exact words the interviewer picked up on. */
-  .highlight {
-    background: linear-gradient(transparent 55%, color-mix(in oklch, var(--brand) 55%, transparent) 55%);
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-    padding: 0 2px;
   }
 }
 

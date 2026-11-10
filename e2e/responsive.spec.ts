@@ -9,7 +9,6 @@ const VIEWPORTS = [
 ]
 
 const PAGES = [
-  { path: "/", heading: /Interviews that follow up/, auth: false },
   { path: "/sign-in", heading: /Choose your workspace/, auth: false },
   { path: "/dashboard", heading: /E2E.s interview prep/, auth: true },
 ]
